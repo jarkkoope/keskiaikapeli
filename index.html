@@ -259,7 +259,7 @@
                     } else if (/\.(mp3|wav|ogg)$/.test(url)) {
                         const audio = new Audio();
                         audio.src = url;
-                        audio.oncanplaythrough = resolve;
+                        audio.onloadeddata = resolve;
                         audio.onerror = reject;
                     } else {
                         resolve(); // Ohitetaan tuntemattomat tiedostotyypit
