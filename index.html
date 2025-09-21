@@ -112,10 +112,16 @@
 </head>
 <body class="bg-stone-800 text-stone-200 flex items-center justify-center min-h-screen p-4">
 
+    <div id="loading-screen" class="absolute inset-0 bg-stone-900 flex flex-col items-center justify-center z-50">
+        <h2 class="medieval-font text-4xl text-amber-300 mb-4">Ladataan peliä...</h2>
+        <div class="w-1/2 bg-stone-700 rounded-full h-4">
+            <div id="loading-progress-bar" class="bg-amber-500 h-4 rounded-full transition-all duration-300" style="width: 0%"></div>
+        </div>
+        <p id="loading-status" class="text-stone-400 mt-2 text-sm"></p>
+    </div>
     <div id="game-container" class="w-full max-w-3xl bg-stone-900/50 backdrop-blur-sm rounded-2xl shadow-2xl shadow-black/50 border border-stone-700 p-6 md:p-10">
         
-        <div id="start-screen">
-            <h1 class="medieval-font text-4xl md:text-6xl text-center text-amber-300 mb-4">Keskiajan Matkaaja</h1>
+        <div id="start-screen" class="hidden"> <h1 class="medieval-font text-4xl md:text-6xl text-center text-amber-300 mb-4">Keskiajan Matkaaja</h1>
             <p class="text-center text-stone-400 mb-8">Olet nuori, joka elää keskiajalla. Matkasi on juuri alkamassa. Valitse kuka olet, ja aloita seikkailusi halki historian.</p>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
@@ -183,6 +189,103 @@
     </div>
 
     <script>
+        // ===== UUSI ESILATAUSKOODI ALKAA =====
+
+        // 1. Funktio, joka kerää kaikki tarvittavat tiedostopolut pelin datasta
+        function collectAssetUrls() {
+            const urls = new Set(); // Käytetään Set-rakennetta, jotta samaa tiedostoa ei ladata moneen kertaan
+
+            // Kerätään äänet ja kuvat tarinoista (storyNodes)
+            for (const key in storyNodes) {
+                const node = storyNodes[key];
+                if (node.music) urls.add(node.music);
+                if (node.audio) urls.add(node.audio);
+                // Etsitään kuvat tekstin sisältä (<img>-tageista)
+                if (node.text) {
+                    const matches = node.text.match(/src='([^']+\.(png|jpg|jpeg|webp|gif))'/g);
+                    if (matches) {
+                        matches.forEach(match => {
+                            urls.add(match.substring(5, match.length - 1));
+                        });
+                    }
+                }
+            }
+
+            // Kerätään kuvakkeet tavaroista (allItems)
+            for (const key in allItems) {
+                if (allItems[key].icon) urls.add(allItems[key].icon);
+            }
+            
+            // Kerätään kuvat titteleistä (titleTiers)
+             for (const tier of titleTiers) {
+                if (tier.imageSrc) urls.add(tier.imageSrc);
+            }
+
+            // Kerätään yleiset ääniefektit
+            urls.add('audio/effects/hover.mp3');
+            urls.add('audio/effects/klikkaus.mp3');
+            urls.add('audio/effects/oikein.mp3');
+            urls.add('audio/effects/vaarin.mp3');
+
+            return Array.from(urls); // Palautetaan uniikit URL-osoitteet listana
+        }
+
+        // 2. Funktio, joka lataa tiedostot ja päivittää latauspalkkia
+        async function preloadAssets(urls) {
+            const loadingScreen = document.getElementById('loading-screen');
+            const startScreen = document.getElementById('start-screen');
+            const progressBar = document.getElementById('loading-progress-bar');
+            const statusText = document.getElementById('loading-status');
+            
+            let loadedCount = 0;
+            const totalCount = urls.length;
+
+            statusText.textContent = `Ladataan ${loadedCount}/${totalCount}...`;
+
+            // Luodaan joukko "lupauksia" jokaisen tiedoston lataamisesta
+            const promises = urls.map(url => {
+                return new Promise((resolve, reject) => {
+                    // Käsitellään kuvat ja äänet eri tavoin
+                    if (/\.(png|jpg|jpeg|webp|gif)$/.test(url)) {
+                        const img = new Image();
+                        img.src = url;
+                        img.onload = resolve;
+                        img.onerror = reject;
+                    } else if (/\.(mp3|wav|ogg)$/.test(url)) {
+                        const audio = new Audio();
+                        audio.src = url;
+                        audio.oncanplaythrough = resolve;
+                        audio.onerror = reject;
+                    } else {
+                        resolve(); // Ohitetaan tuntemattomat tiedostotyypit
+                    }
+                }).then(() => {
+                    // Päivitetään latauspalkkia ja tekstiä onnistuneen latauksen jälkeen
+                    loadedCount++;
+                    const progress = Math.round((loadedCount / totalCount) * 100);
+                    progressBar.style.width = `${progress}%`;
+                    statusText.textContent = `Ladataan ${loadedCount}/${totalCount}...`;
+                });
+            });
+
+            // Odotetaan, että kaikki tiedostot on yritetty ladata
+            await Promise.all(promises);
+
+            // Kun kaikki on valmista, piilotetaan latausruutu ja näytetään pelin aloitusruutu
+            statusText.textContent = "Valmis!";
+            setTimeout(() => {
+                loadingScreen.style.display = 'none';
+                startScreen.classList.remove('hidden');
+            }, 500); // Pieni viive, jotta pelaaja ehtii nähdä "Valmis!"-tekstin
+        }
+
+        // 3. Käynnistetään esilataus, kun sivu on latautunut
+        window.onload = () => {
+            const assetsToLoad = collectAssetUrls();
+            preloadAssets(assetsToLoad);
+        };
+
+        // ===== UUSI ESILATAUSKOODI PÄÄTTYY =====
 	
 		// --- UUSI OSA: Tavaroiden ja taitojen kirjasto ---
 		const allItems = {
@@ -193,12 +296,12 @@
 			},
 			'lukutaito': { 
 				name: 'Lukutaito', 
-				icon: 'media/icons/book.png',
+				//icon: 'media/icons/book.png',
 				description: 'Osaat lukea, mikä avaa ovia tiedon maailmaan.'
 			},
 			'paperinvalmistus': {
 				name: 'Paperinvalmistuksen taito',
-				icon: 'media/icons/paper.png',
+				//icon: 'media/icons/paper.png',
 				description: 'Osaat valmistaa paperia, arvokasta materiaalia tiedon tallentamiseen.'
 			},
 			// ...lisää muita taitoja ja tavaroita tänne tarpeen mukaan
@@ -389,7 +492,7 @@
 				titleBgColor: 'bg-lime-950',
 				titleTextColor: 'text-lime-200',
 				text: "<img src='media/jatkantoita.png' alt='Jatkan töitä' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Papin sanat ovat mielenkiintoisia, mutta tunnet olosi turvalliseksi vain kotikylässäsi. Elämä on kovaa, mutta rehellinen työ pelloilla on tuttu ja turvallinen. Perheesi on onnellinen, kun jäät heidän luokseen. Kovan työn ansiosta sato on hyvä.",
-				audio: 'audio/voices/jatkantoita.mp3',
+				audio: 'audio/voices/jatkatoita.mp3',
 				points: 1,
 				target: "seuraava_vaihe_2" },
 				
@@ -645,7 +748,7 @@
 				placeholder: "Silkkitien kauppiaat",
 				titleBgColor: 'bg-cyan-900',
 				titleTextColor: 'text-cyan-100',
-				audio: 'audio/voices/tiedeislam.mp3',
+				audio: 'audio/voices/tiede_islam.mp3',
 				text: "<img src='media/tiedeislam.png' alt='Ahmed esittelee keksintöjä' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Kauppias kertoo lääkäri Ibn Sinasta ja näyttää sinulle astrolabin, jolla voi mitata aikaa tähtien avulla. Olet vaikuttunut.", 
 				points: 3, 
 				target: "ristiretki_kutsu"
@@ -740,7 +843,7 @@
 				placeholder: "Ristiretken kenttäsairaala",
 				titleBgColor: 'bg-amber-900',
 				titleTextColor: 'text-stone-300',
-				audio: 'audio/voices/auta_haavoittuneita.mp3',
+				audio: 'audio/voices/autahaavoittuneita.mp3',
 				text: "<img src='media/autahaavoittuneita.png' alt='Autan haavoittuneita' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Riskialtis työsi haavoittuneiden parissa pelastaa monia henkiä. Saat sotilaiden kunnioituksen ja opit paljon lääkinnästä.", 
 				points: 3, 
 				target: "seuraava_vaihe_4" },
