@@ -1481,6 +1481,14 @@
 			// Erillinen logiikka ristiretki-taisteluun
 			if (nodeId === 'ristiretki_taistelu') {
 				const node = storyNodes[nodeId];
+				
+				if (node.audio) {
+					peliAudio.src = node.audio;
+					peliAudio.play().catch(e => console.log("Toisto estetty selaimen toimesta."));
+				} else {
+					peliAudio.pause();
+					peliAudio.currentTime = 0;
+				}
 				storyText.innerHTML = node.text;
 				choicesContainer.innerHTML = '';
 
