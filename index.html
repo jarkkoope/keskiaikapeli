@@ -1,0 +1,1686 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keskiajan Matkaaja</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=MedievalSharp&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .medieval-font {
+            font-family: 'MedievalSharp', cursive;
+        }
+        .fade-in {
+            animation: fadeIn 1s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .progress-bar-inner {
+            transition: width 1.5s ease-in-out;
+        }
+		.image-placeholder {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			height: 100%;
+			width: 100%;
+			text-align: center;
+			padding: 2rem;
+			box-sizing: border-box;
+		}
+
+		.image-placeholder-text {
+			font-family: 'MedievalSharp', cursive;
+			font-size: 2.8rem;
+/*			color: #d4af37; Gold/Amber color */
+			text-shadow: 2px 2px 3px rgba(0, 0, 0, 0.7);
+		}
+		
+		.score-pillar-container {
+            height: 20rem; /* 320px, voit säätää korkeutta */
+            position: relative;
+        }
+        .score-bar-track {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 40px;
+            height: 100%;
+            background-color: #404040; /* Tailwindin stone-700 */
+            border: 2px solid #57534e; /* Tailwindin stone-600 */
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        .score-bar-fill {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background: linear-gradient(to top, #f59e0b, #fcd34d); /* Tailwindin amber-500 -> amber-300 */
+            transition: height 1.5s ease-in-out;
+        }
+        .score-labels-container {
+            position: absolute;
+            bottom: 0;
+            left: 55px; /* Palkin leveys + pieni väli */
+            top: 0;
+            right: 0;
+        }
+        .score-label {
+            position: absolute;
+            transform: translateY(50%); /* Kohdistaa tekstin paremmin keskelle viivaa */
+            transition: color 1.5s ease-in-out;
+        }
+		
+		.score-popup {
+			position: absolute;
+			top: 50%; /* Asetetaan keskelle uutta vanhempaa */
+			left: 50%;
+			transform: translate(-50%, -50%); /* Keskittää elementin tarkasti */
+			font-size: 3rem; /* 48px */
+			font-family: 'MedievalSharp', cursive;
+			pointer-events: none;
+			animation: score-pop 1.5s ease-out forwards;
+		}
+
+		@keyframes score-pop {
+			0% { transform: translate(-50%, 0) scale(0.5); opacity: 1; }
+			50% { transform: translate(-50%, -60px) scale(1.1); opacity: 1; }
+			100% { transform: translate(-50%, -100px) scale(1.2); opacity: 0; }
+		}
+		
+		.ladder-item:not(:last-child)::after {
+			content: '';
+			display: block;
+			width: 2px;
+			height: 1rem; /* Väli itemien välillä */
+			background-color: #57534e; /* Tailwind stone-600 */
+			margin: 0.5rem auto 0;
+		}
+		
+    </style>
+	<audio id="peli-audio" preload="auto"></audio>
+	<audio id="sfx-player" preload="auto"></audio>
+	<audio id="music-player-1" loop preload="auto"></audio>
+	<audio id="music-player-2" loop preload="auto"></audio>
+</head>
+<body class="bg-stone-800 text-stone-200 flex items-center justify-center min-h-screen p-4">
+
+    <div id="game-container" class="w-full max-w-3xl bg-stone-900/50 backdrop-blur-sm rounded-2xl shadow-2xl shadow-black/50 border border-stone-700 p-6 md:p-10">
+        
+        <div id="start-screen">
+            <h1 class="medieval-font text-4xl md:text-6xl text-center text-amber-300 mb-4">Keskiajan Matkaaja</h1>
+            <p class="text-center text-stone-400 mb-8">Olet nuori, joka elää keskiajalla. Matkasi on juuri alkamassa. Valitse kuka olet, ja aloita seikkailusi halki historian.</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                <button onclick="startGame('aatelinen')" class="text-left p-4 bg-stone-800 hover:bg-amber-800/50 border border-stone-700 rounded-lg transition-all duration-300">
+                    <h3 class="medieval-font text-2xl text-amber-400">Aatelisen lapsi</h3>
+                    <p class="text-stone-400 text-sm">Aloitat linnasta. Osaat lukea ja tunnet hallitsijoiden tapoja.</p>
+                </button>
+                <button onclick="startGame('talonpoika')" class="text-left p-4 bg-stone-800 hover:bg-amber-800/50 border border-stone-700 rounded-lg transition-all duration-300">
+                    <h3 class="medieval-font text-2xl text-amber-400">Talonpojan lapsi</h3>
+                    <p class="text-stone-400 text-sm">Aloitat maaseudulta. Tunnet maan ja luonnon, mutta et osaa lukea.</p>
+                </button>
+                 <button onclick="startGame('kasityolainen')" class="text-left p-4 bg-stone-800 hover:bg-amber-800/50 border border-stone-700 rounded-lg transition-all duration-300">
+                    <h3 class="medieval-font text-2xl text-amber-400">Käsityöläisen oppipoika</h3>
+                    <p class="text-stone-400 text-sm">Aloitat pienestä kaupungista. Olet näppärä käsistäsi ja opit ammatin saloja.</p>
+                </button>
+                 <button onclick="startGame('munkki')" class="text-left p-4 bg-stone-800 hover:bg-amber-800/50 border border-stone-700 rounded-lg transition-all duration-300">
+                    <h3 class="medieval-font text-2xl text-amber-400">Munkkioppilas</h3>
+                    <p class="text-stone-400 text-sm">Aloitat luostarista. Osaat lukea ja kirjoittaa latinaa ja tunnet uskonnon salat.</p>
+                </button>
+            </div>
+        </div>
+
+        <div id="game-screen" class="hidden">
+            <div id="image-container" class="mb-6 rounded-lg overflow-hidden border-2 border-stone-700 h-30 bg-stone-800 flex items-center justify-center">
+                <img id="scene-image" src="" alt="Kohtauksen kuva" class="w-full h-full object-cover">
+            </div>
+            <div id="stats-container" class="flex justify-between items-center mb-4 text-amber-300 medieval-font text-lg">
+                <div>Hahmo: <span id="character-name"></span></div>
+                <div>Tietopisteet: <span id="score">0</span></div>
+            </div>
+			<div id="inventory-container" class="mt-4 hidden">
+				<h4 class="medieval-font text-amber-200 text-base mb-2">Taidot ja tavarat:</h4>
+				<div id="inventory-slots" class="flex flex-wrap items-center gap-3 p-2 bg-black/20 border border-stone-700 rounded-md min-h-[56px]">
+					</div>
+			</div>
+            <div id="story-text" class="text-lg leading-relaxed mb-6 bg-black/20 p-4 rounded-md border border-stone-800 min-h-[100px]"></div>
+            <div id="choices-container" class="grid grid-cols-1 gap-3"></div>
+            <div id="quiz-container" class="hidden">
+                <p id="quiz-question" class="text-lg mb-4"></p>
+                <div id="quiz-choices" class="grid grid-cols-1 gap-3"></div>
+            </div>
+            <div id="feedback-container" class="mt-4 text-center"></div>
+        </div>
+
+		<div id="results-screen" class="hidden text-center">
+            <h2 class="medieval-font text-4xl text-amber-300 mb-4">Seikkailu on päättynyt!</h2>
+            <p class="text-stone-300 mb-2">Sait kerättyä</p>
+            <p class="medieval-font text-7xl text-white mb-8"><span id="final-score">0</span> pistettä</p>
+            
+        <div id="title-ladder-container" class="flex flex-col items-center space-y-2 mb-8"></div>
+
+			<div class="mt-12 flex justify-center">
+				<button onclick="showNode('restart')" class="w-full md:w-auto px-8 py-3 bg-amber-600 hover:bg-amber-700 border border-amber-500 rounded-lg transition-all duration-300 text-white font-bold text-lg">Pelaa uudelleen</button>
+			</div>
+            
+        </div>
+
+		<div id="game-over-screen" class="hidden text-center p-6 md:p-10">
+			<h2 class="medieval-font text-5xl text-red-600 mb-4">Seikkailu päättyi</h2>
+			<div id="game-over-text" class="text-stone-300 text-lg mb-8 bg-black/30 p-4 rounded-md border border-stone-700">
+			</div>
+			<button onclick="showNode('restart')" class="w-full md:w-auto px-8 py-3 bg-amber-600 hover:bg-amber-700 border border-amber-500 rounded-lg transition-all duration-300 text-white font-bold text-lg">Yritä uudelleen</button>
+		</div>	
+
+    </div>
+
+    <script>
+	
+		// --- UUSI OSA: Tavaroiden ja taitojen kirjasto ---
+		const allItems = {
+			'miekkailu': { 
+				name: 'Miekkailutaito', 
+				icon: 'media/icons/miekkailutaito.webp',
+				description: 'Olet harjoitellut miekan käyttöä. Tämä taito auttaa sinua taisteluissa.' 
+			},
+			'lukutaito': { 
+				name: 'Lukutaito', 
+				icon: 'media/icons/book.png',
+				description: 'Osaat lukea, mikä avaa ovia tiedon maailmaan.'
+			},
+			'paperinvalmistus': {
+				name: 'Paperinvalmistuksen taito',
+				icon: 'media/icons/paper.png',
+				description: 'Osaat valmistaa paperia, arvokasta materiaalia tiedon tallentamiseen.'
+			},
+			// ...lisää muita taitoja ja tavaroita tänne tarpeen mukaan
+		};
+
+		let playerInventory = []; // Pelaajan tyhjä tavaraluettelo pelin alussa
+		
+        // --- Pelin data ---
+		let hasPracticedSwords = false;
+        const gameData = {
+            aatelinen: { name: "Aatelinen", startNode: "aatelinen_alku" },
+            talonpoika: { name: "Talonpoika", startNode: "talonpoika_alku" },
+            kasityolainen: { name: "Käsityöläinen", startNode: "kasityolainen_alku" },
+            munkki: { name: "Munkkioppilas", startNode: "munkki_alku" },
+        };
+
+        const storyNodes = {
+            // --- YHTEISET ALUT --- Fontti #eeeeee, Tausta #8b4513
+            aatelinen_alku: {
+				music: 'audio/music/yleislaulu.mp3', // Yleinen teema alkaa tästä
+                placeholder: "Hohensalzburgin linna",
+				titleBgColor: 'bg-slate-800',
+				titleTextColor: 'text-amber-300',
+				audio: 'audio/voices/aatelinen_1.mp3',
+                text: "<img src='media/Hohensalzburg.png' alt='Hohensalzburgin linna' class='float-left mr-5 mb-4 w-2/3 sm:w-1/1'/>Keskiaikaisessa linnassa nuoren aatelisen elämä on täynnä sääntöjä, velvollisuuksia ja oppimista, mutta samalla se tarjoaa turvaa muuttuvassa maailmassa.<br><br>Hohensalzburgin linnan suuret kivimuurit kohoavat yllesi. Olet syntynyt tähän turvaan, etkä ole koskaan kokenut nälkää tai joutunut pelkäämään rosvojoukkoja samalla tavalla kuin talonpojat. Isäsi, lääninherra, on vastuussa sekä linnasta että ympäröivästä maasta ja sen asukkaista. Hänen elämänsä pyörii jatkuvasti politiikan, sodan ja talouden pyörteissä, mikä tarkoittaa, että hänellä on vain vähän aikaa sinulle. Oletkin oppinut olemaan itsenäinen ja etsimään tekemistä itse.<br><br>Käytännön taidot, kuten miekkailu ja ratsastus, ovat tärkeä osa koulutustasi. Niiden taitaminen on edellytys sille, että voit tulevaisuudessa puolustaa linnaa ja sen asukkaita. Lisäksi sinun tulee oppia lukemaan ja kirjoittamaan, jotta voit auttaa hallinnollisissa tehtävissä ja lukea tärkeitä asiakirjoja, kuten kronikoita, eli historiankirjoja. Kaikki nämä taidot ovat tarpeen, jotta voit jonain päivänä seurata isäsi jalanjäljissä ja ottaa vastuun linnasta.<br><br>Elämäsi Hohensalzburgin kaltaisessa suuressa linnassa on siis turvattua. Kuulet kuitenkin huhuja, että kaupankäynti on pysähtynyt ja ihmiset pakenevat kaupungista. Isäsi, lääninherra, on huolissaan.<br><br>Mitä teet?",
+                choices: [
+                    { text: "Menen kirjastoon lukemaan kronikoita.", target: "tutki_kirjoja" },
+                    { text: "Kysyn isältäni, miten voisin auttaa.", target: "keskustele_isan_kanssa" },
+                    { text: "Lähden harjoittelemaan miekkailua linnanpihalle.", target: "harjoittele_miekkaa" }
+					]
+				},
+				
+            talonpoika_alku: {
+				music: 'audio/music/yleislaulu.mp3', // Yleinen teema alkaa tästä
+                placeholder: "Maaseudun kylä",
+				titleBgColor: 'bg-lime-950',
+				titleTextColor: 'text-lime-200',
+				audio: 'audio/voices/talonpoika_1.mp3',
+                text: "<img src='media/maaseutu.png' alt='Maaseutu' class='float-left mr-5 mb-4 w-2/3 sm:w-1/1'/>Asut pienessä, tiiviissä kylässä aivan suuren kaupungin ulkopuolella. Täällä kaikki tuntevat toisensa, ja jokaisella on oma paikkansa yhteisössä. Elämä on kovaa työtä, sillä elantonne on kiinni pelloista, joita viljelette. Työtä tehdään aamunkoitosta iltahämärään. Kesällä viljellään, syksyllä korjataan sato, talvella korjataan työkaluja ja kudotaan vaatteita, ja keväällä valmistellaan taas uutta kasvukautta.<br><br>Vaikka teillä ei ole paljoa, ette ole yksin. Autatte toisianne sadonkorjuussa ja jaatte viljaa heikkoina aikoina. Raha on harvinainen näky, sillä sen sijaan vaihdatte tavaroita ja palveluksia. Naapurikylään kävelette kerran kuukaudessa vaihtamaan oman kylänne valmistamaa viljaa heidän takomiinsa työkaluihin. Tämä on elinehto, jotta voitte jatkaa elämänne kiertokulkua.<br><br>Olet oppinut tekemään raskaita töitä jo pienestä pitäen. Osaat kylvää siemeniä, kerätä viljaa ja kantaa painavia vesisaaveja. Et ehkä osaa lukea, mutta tunnet maan, tuulen ja sateen merkit. Ne ovat sinun kirjasiasi. Ne kertovat, milloin on aika kylvää ja milloin on aika korjata sato.<br><br>Eräänä päivänä arki katkeaa. Kylänraitille saapuu kiertävä pappi. Hänellä on yllään yksinkertainen kaapu, ja hän on selvästi matkustanut pitkän matkan. Hän ei näytä samanlaiselta kuin kyläläiset, ja hänen olemuksessaan on jotain mystistä ja arvoituksellista. Hän kerää kylän väen koolle.<br><br>Mitä teet?",
+				choices: [
+                    { text: "Menen kuuntelemaan hänen saarnaansa.", target: "kuuntele_pappia" },
+                    { text: "Jatkan töitä pellolla, sato on tärkein.", target: "jatka_toita" },
+                    { text: "Kysyn papilta, onko hänellä tietoa maailmalta.", target: "kysy_papilta_uutisia" }
+					]
+				},
+				
+            kasityolainen_alku: {
+				music: 'audio/music/yleislaulu.mp3', // Yleinen teema alkaa tästä
+                placeholder: "Suutarin pajassa",
+				titleBgColor: 'bg-[#6b4f40]',
+				titleTextColor: 'text-amber-200',
+				audio: 'audio/voices/kasityolainen_1.mp3',
+                text: "<img src='media/suutari.png' alt='Maaseutu' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Elämä suutarin oppipoikana on vaativaa, mutta se tarjoaa mahdollisuuden parempaan tulevaisuuteen. Sinulla on onni elää pienessä kaupungissa, joka on monelle kauppiaalle ja käsityöläiselle unelma. Täällä voit oppia mestariltasi arvokkaan ammatin, jolla voit elättää itsesi ja tulevan perheesi.<br><br>Kaikki ei kuitenkaan ole ruusuilla tanssimista. Työpajassa työskentelet pitkiä päiviä nahkahajuisten materiaalien ja työkalujen keskellä. Mestari opettaa sinulle kaiken kenkien tekemisestä alusta loppuun. Jokainen ommel ja jokainen leikkaus on tärkeä, sillä jokainen valmistettu kenkä on käyntikortti koko työpajalle ja sen taidolle.<br><br>Normaalioloissa kaupankäynti käy vilkkaana. Kaupunkilaiset tarvitsevat jatkuvasti uusia kenkiä, ja pyhiinvaeltajat matkalla kaukaisiin kirkkoihin ja luostareihin ovat suuri asiakasryhmä.<br><br>Viime aikoina tilanne on kuitenkin muuttunut. Ihmiset ovat alkaneet paeta kaupungista, ja kauppakatu on aiempaa hiljaisempi. Mestari on neuvoton, sillä tilauksia ei enää tule, ja hänen on vaikea maksaa työpajasta ja oppipoikiensa ylläpidosta. Olet kuullut huhuja, että luostarit etsivät uusia työntekijöitä. He tarvitsevat kaikkea mahdollista: kokkeja, rakentajia ja käsityöläisiä, kuten suutareita.<br><br>Mitä teet?",
+                choices: [
+                    { text: "Ehdotan mestarille, että teemme kenkiä luostarille.", target: "ehdota_luostaria" },
+                    { text: "Päätän lähteä etsimään onneani maaseudulta.", target: "lahde_maalle" },
+                    { text: "Yritän myydä kenkiä pyhiinvaeltajille.", target: "myy_pyhiinvaeltajille" }
+					]
+				},
+				
+            munkki_alku: {
+				music: 'audio/music/yleislaulu.mp3', // Yleinen teema alkaa tästä
+                placeholder: "Elämää luostarissa",
+				titleBgColor: 'bg-stone-800',
+				titleTextColor: 'text-yellow-100',
+				audio: 'audio/voices/munkki_1.mp3',
+                text: "<img src='media/luostari.png' alt='Elämää luostarissa' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Elät kaupungin ulkopuolella luostarissa, joka on kuin oma maailmansa maallisen elämän ulkopuolella. Se on tiedon ja uskon keskus, jonne ihmiset hakeutuvat oppimaan, rukoilemaan ja palvelemaan Jumalaa. Luostarin paksut kivimuurit suojaavat sinua ulkomaailman myllerryksiltä.<br><br>Elämäsi luostarissa on kurinalaista ja säänneltyä. Joka päivä noudatetaan tarkkaa aikataulua, joka on täynnä rukouksia, työntekoa ja hiljentymistä. Päivittäinen tehtäväsi on kopioida vanhoja käsikirjoituksia. Työsi vaatii suurta kärsivällisyyttä ja tarkkuutta, sillä jokainen kirjain ja jokainen kuvitus piirretään käsin pergamentille. Työnteon lomassa sinun tulee myös opiskella, lukea pyhiä kirjoituksia ja oppia tuntemaan Raamatun tekstejä.<br><br>Apotti on luostarin johtaja, joka on vastuussa kaikesta. Hän on kuin luostarin isä, ja hän ohjaa kaikkia luostarin asukkaita. Apotti on arvostettu ja kunnioitettu mies. Hänen elämänsä on täynnä johtamista, viisautta ja uskoa.<br><br>Apotti antaa sinulle uuden tehtävän, joka liittyy uskonnon levittämiseen ja yhteisön tukemiseen. <br><br>Miten aiot auttaa?",
+                choices: [
+                    { text: "Kopioin ja kuvitan pyhimystarinan.", target: "kopioi_pyhimystarina" },
+                    { text: "Suunnittelen uuden vesikanavan luostarin puutarhaan.", target: "suunnittele_vesikanavan" },
+                    { text: "Järjestän luostarin kirjaston.", target: "luostarin_kirjasto" }
+                ]
+            },
+
+            // --- KAPITELI 1: Keskiaika antiikin jälkeen --- Fontti aaccff, tausta 332211
+            tutki_kirjoja: {
+                placeholder: "Hohensalzburgin linna",
+				titleBgColor: 'bg-slate-800',
+				titleTextColor: 'text-amber-300',
+				text: "<img src='media/tutkikirjoja.png' alt='Kirjojen tutkimista' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Suuren linnan kirjastossa vallitsee hiljaisuus. Täällä on tusinoittain kirjoja ja kääröjä. Paksun nahkan ja vanhan paperin tuoksu täyttää ilman. Löydät hyllystä pölyisen niteen, joka on nimeltään kronikka. Kronikka on kuin vanha päiväkirja, joka kertoo menneiden aikojen tapahtumista.<br><br>Avaat kirjan, ja luet sen alkusanat. Se kertoo kauan sitten eläneistä ihmisistä, frankeista, ja heidän valtakunnastaan. Luet kiehtovia tarinoita sodista, kuninkaista ja siitä, miten heidän valtakuntansa syntyi ja kasvoi. Ymmärrät, että tämä kirja on historiallinen lähde. Se on kuin aikakapseli menneisyydestä, joka on luonut senhetkistä aikaa.<br><br>Vaikka kirja on kirjoitettu vuosikymmeniä tai ehkä jopa vuosisatoja sitten, siitä voi silti oppia, mitä menneisyydessä on tapahtunut. Kronikan kirjoittaja on itse todistanut monia tapahtumia tai kuullut niistä luotettavilta silminnäkijöiltä. Siksi se on tärkeä tietolähde siitä, miten maailma on muuttunut.<br><br>Tämä kronikka auttaa sinua ymmärtämään, miksi isäsi on niin huolissaan. Historiassa valtakunnat ovat nousseet ja kaatuneet, ja muutokset ovat aina aiheuttaneet epävarmuutta. Vaikka rutto on uusi asia, historia on täynnä esimerkkejä siitä, kuinka ihmiset ovat selvinneet vaikeista ajoista.",
+				audio: 'audio/voices/tutkikirjoja.mp3',
+				points: 1,
+				quiz: "lahteet" },
+				
+            keskustele_isan_kanssa: {
+                placeholder: "Hohensalzburgin linna",
+				titleBgColor: 'bg-slate-800',
+				titleTextColor: 'text-amber-300',
+				audio: 'audio/voices/puhuisalle.mp3',
+				text: "<img src='media/puhuisalle.png' alt='Keskustelen isän kanssa' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Menet isäsi, lääninherran, puheille suuren linnan saliin. Hän istuu valtaistuimellaan, ja hänen kasvoillaan näkyy syvä huoli.<br><br>— Kaupankäynti on pysähtynyt, isäsi sanoo vakavasti.<br><br>— Koko valtakunta on epävakaa.<br><br>Hän selittää, että aateliston tulee olla vahva johtaja kriisin aikana. Hän on huolissaan siitä, että nuorena aatelisena sinulta puuttuu vielä tarvittava kokemus ja viisaus johtamistehtäviin. Hänen mielestään on tärkeää, että opit ymmärtämään maailmaa laajemmin ja osaat tehdä viisaita päätöksiä.<br><br>Hän esittelee sinulle kolme vaihtoehtoa, joilla voit kehittää itseäsi ja auttaa valtakuntaa.<br><br>Mitä teet?",
+				choices: [
+					{ text: "Lähden harjoittelemaan miekkailua.", target: "harjoittele_miekkaa" },
+					{ text: "Lähden kouluttautumaan hallinnoin taidossa.", target: "harjoittele_hallinnointia" },
+					{ text: "Lähden opiskelemaan viisautta.", target: "matka_luostariin" }
+					]
+				},
+				
+            harjoittele_miekkaa: {
+                placeholder: "Hohensalzburgin linna",
+				titleBgColor: 'bg-slate-800',
+				titleTextColor: 'text-amber-300',
+				text: "<img src='media/miekkailu.png' alt='Miekkailuharjoituksissa' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Hiekka pöllyää, kun miekkasi kohtaa harjoitusvastustajasi kilven. Olet tottunut miekan painoon ja sen liikkeisiin. Päivittäinen harjoittelu linnan pihalla on tehnyt sinusta taitavan miekkailijan, sillä sotataidot ovat nuorelle aateliselle välttämättömiä taitoja. Vaikka ne eivät auta tämän hetken ongelmiin, opit kuitenkin puolustamaan itseäsi ja myöhemmin myös linnan asukkaita, jos sota syttyy. Tämä taito on sinulle tärkeä, koska se on perusta sille, mitä tulevaisuudessa odotetaan aateliselta.",
+				audio: 'audio/voices/harjoittelemiekkaa.mp3',
+				grantsItem: 'miekkailu',
+				points: 1,
+				target: "seuraava_vaihe_2"
+				},
+				
+			harjoittele_hallinnointia: {
+                placeholder: "Hohensalzburgin linna",
+				titleBgColor: 'bg-slate-800',
+				titleTextColor: 'text-amber-300',
+				text: "<img src='media/hallinnoinninopettelu.png' alt='Hallinnoinnin harjoittelua' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Isäsi, lääninherra, on tyytyväinen valintaasi. Hän näkee sinussa potentiaalia tulevaksi johtajaksi ja uskoo, että oppimalla hallinnon saloja voit auttaa valtakuntaa selviämään vaikeista ajoista.<br><br>Saat itsellesi useita vaativia tehtäviä. Ensimmäinen tehtäväsi on auttaa isääsi verojen keräämisessä. Olet vastuussa siitä, että kaikki kyläläiset maksavat veronsa, jotta linna voi ylläpitää omaa sotajoukkoaan. Tämä on tärkeä tehtävä, sillä ilman sotajoukkoa linna ja sen asukkaat olisivat puolustuskyvyttömiä.<br><br>Seuraava tehtäväsi on auttaa isääsi oikeudenkäytössä. Oikeudenkäynti on keskiajalla monimutkainen ja vaativa prosessi, ja sinun tulee oppia tekemään oikeudenmukaisia päätöksiä. Olet vastuussa siitä, että teet viisaita ja oikeudenmukaisia päätöksiä, jotka hyödyttävät kaikkia.<br><br>Olet oppinut, että hallinto on vaativaa ja vastuullista työtä, joka vaatii kärsivällisyyttä ja viisautta. Et kuitenkaan ole yksin, sillä isäsi ja muut linnan virkamiehet auttavat sinua. Olet oppinut, että hallitsemisen taidot ovat yhtä tärkeitä kuin miekkailu, sillä ilman niitä valtakunta ei voi selviytyä.",
+				audio: 'audio/voices/harjoittelehallinnointia.mp3',
+				points: 2,
+				target: "seuraava_vaihe_2"
+				},
+				
+            kuuntele_pappia: {
+                placeholder: "Maaseudun kylä",
+				titleBgColor: 'bg-lime-950',
+				titleTextColor: 'text-lime-200',
+				text: "<img src='media/kuuntelenpappia.png' alt='Kuuntelen pappia' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Kun istut alas kuuntelemaan pappia, hän alkaa kertoa tarinoita, joita et ole aiemmin kuullut. Ne kertovat kaukaisesta maasta, jonka uskonnosta, kristinuskosta, olet kuullut vain ohimennen. Pappi kuvailee tarinoita Jeesuksesta, joka syntyi vaatimattomasti ja opetti ihmisille toivosta, anteeksiannosta ja rakkaudesta. Hän puhuu myös pyhimyksistä, jotka olivat esimerkillisiä, uskonnollisia ihmisiä ja jotka tekevät yhä nykyaikana ihmeitä ja ovat valmiita auttamaan kaikkia.<br><br>Pappi kuvailee, miten kristinusko tarjoaa turvaa ja toivoa vaikeina aikoina. Hän selittää, että vaikka luonto tai sato voivat pettää, taivas on aina avoin. Hänen sanansa puhuttelevat kyläläisiä syvästi, sillä nälkä ja sairaudet ovat jatkuva uhka. Monet heistä, jotka ovat eläneet vanhojen jumalien, kuten viljan ja sateen henkien, armoilla, kääntyvät nyt kristinuskoon. He tuntevat saavansa uudenlaista lohtua ja turvaa.<br><br>Kuuntelet pappia haltioituneena. Vaikka olet tottunut peltoon ja käsin tehtävään työhön, papin sanat tuovat uuden ajatuksen mieleesi. Voisiko elämä olla muutakin kuin päivittäistä kamppailua elannosta? Voisiko olla, että on olemassa suurempi voima, joka voi tarjota apua ja lohtua?",
+				audio: 'audio/voices/kuuntelenpappia.mp3',
+				points: 3,
+				target: "seuraava_vaihe_2"
+				},
+				
+            jatka_toita: {
+                placeholder: "Maaseudun kylä",
+				titleBgColor: 'bg-lime-950',
+				titleTextColor: 'text-lime-200',
+				text: "<img src='media/jatkantoita.png' alt='Jatkan töitä' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Olet syvällä pelloilla, sormet multaisena ja selkä hikisenä. Aurinko paistaa kuumasti niskaasi, mutta et välitä siitä. Tiedät, että jokainen päivä, jonka käytät peltojen kyntämiseen, kylvämiseen ja sadon korjaamiseen, on panostus selviytymiseen. Se on myös tärkeä panostus perheesi tulevaisuuteen. Vaikka kylässäsi ei ole rahaa, vilja on arvokkaampaa kuin kulta. Siitä on hyötyä talvella, kun lumi peittää pellot.<br><br>Koska olet oppinut työnteon merkityksen jo nuorena, olet kasvanut vastuuntuntoiseksi ja ahkeraksi. Kovan työnteon kautta olet saanut perheesi luottamuksen. He tietävät, että sinuun voi luottaa. Olet oppinut luottamaan myös itseesi ja omiin käsiisi, sillä elämä on opettanut sinulle, että vain kovalla työllä saa jotain aikaiseksi.<br><br>Kaikki ei kuitenkaan ole pelkkää kovaa työtä. Olet myös nähnyt luonnon anteliaisuuden, kun sadot ovat olleet hyviä. Olet nähnyt, miten naapurit ovat auttaneet toisiaan vaikeina aikoina, ja olet oppinut, että yhteisö on tärkeä osa elämää. Vaikka et ole koskaan käynyt koulua, olet oppinut elämän tärkeimmät asiat: rehellisyyden, työnteon ja yhteisön voiman.",
+				audio: 'audio/voices/jatkatoita.mp3',
+				points: 1,
+				target: "kuokkaongelma"
+				},
+				
+			kuokkaongelma: {
+			    placeholder: "Työt pellolla",
+				titleBgColor: 'bg-lime-950',
+				titleTextColor: 'text-lime-200',
+				audio: 'audio/voices/kuokkaongelma.mp3',
+				text: "<img src='media/kuokkaongelma.png' alt='Työt pellolla' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Auringon paahtaessa jatkat kuokkimista, mutta yhtäkkiä kuulet ikävän äänen. Kuokkasi varsi on haljennut ja sen terä on löystynyt. Tarvitset uuden kuokan, mutta rahaa sinulla ei ole. Muistat, että kylän seppä on taitava käsistään.<br><br>Miten aiot hankkia uuden kuokan?",
+				choices: [
+					{ text: "Tarjoan sepälle osan viljasadostamme.", target: "sepan_paja" },
+					{ text: "Yritän korjata kuokan itse.", target: "korjaa_itse" }
+					]
+			},
+			
+			sepan_paja: {
+				placeholder: "Sepän pajalla",
+				titleBgColor: 'bg-[#5c4033]',
+				titleTextColor: 'text-orange-300',
+				audio: 'audio/voices/sepanpaja.mp3',
+				text: "<img src='media/sepanpaja.png' alt='Sepän pajalla' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Menet sepän äänekkäälle ja lämmöstä hehkuvalle pajalle. Esität asiasi ja tarjoat viljaa maksuksi uudesta kuokasta. Seppä tarkastelee sinua hetken ja nyökkää sitten. – Vilja kelpaa aina, hän sanoo ja ojentaa sinulle tukevan, uuden kuokan. Olet onnistuneesti tehnyt vaihtokaupan. Tämä on vaihdantataloutta käytännössä.<br><br>Palaat tyytyväisenä pelloille jatkamaan töitä.",
+				points: 2,
+				target: "seuraava_vaihe_2"
+			},
+
+			korjaa_itse: {
+				placeholder: "Pellolla",
+				titleBgColor: 'bg-lime-950',
+				titleTextColor: 'text-lime-200',
+				audio: 'audio/voices/korjaaitse.mp3',
+				text: "<img src='media/korjaaitse.png' alt='Rikkoutunut työkalu' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Yrität sitoa kuokan vartta yhteen köydellä ja kiilata terää tiukemmin paikoilleen. Se on vain väliaikainen ratkaisu. Työskentely on hidasta ja vaivalloista, ja menetät arvokasta aikaa. Vaikka säästät viljasi, opit, että hyvät työkalut ovat korvaamattomia ja joskus on viisaampaa tukeutua muiden ammattitaitoon.",
+				points: 0,
+				target: "seuraava_vaihe_2"
+			},
+			
+            kysy_papilta_uutisia: {
+                placeholder: "Maaseudun kylä",
+				titleBgColor: 'bg-lime-950',
+				titleTextColor: 'text-lime-200',
+				text: "<img src='media/papinuutiset.png' alt='Pappi kertoo uutisia' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Pappi katsoo sinua vakavasti ja hymyilee. Hän kertoo, että maailma on suuri ja täynnä ihmeitä. Hän aloittaa puhumalla frankeista, suuresta kansasta, joka on valloittanut laajoja alueita Euroopasta ja luonut vahvan valtakunnan. Hän puhuu mahtavasta kuninkaasta nimeltä Kaarle Suuri, joka hallitsee frankkeja ja suojelee uskontoa.<br><br>Pappi kuvailee, kuinka Kaarle Suuri on suuri soturi ja viisas johtaja, joka on yhdistänyt kansoja ja luonut lain ja järjestyksen valtakuntaansa. Hän kertoo tarinoita sodista ja voitoista, mutta myös koulutuksen tärkeydestä ja siitä, miten luostareita perustetaan tiedon säilyttämiseksi.<br><br>Hän puhuu myös pyhiinvaelluksista, pitkistä matkoista, joita uskovaiset tekevät pyhiin paikkoihin. Hän kuvailee matkoja, jotka johtavat Roomaan, jossa sijaitsee kirkon keskus, tai jopa kauas itään, Pyhälle Maalle. Nämä matkat vaativat rohkeutta ja uskoa, mutta pappi vakuuttaa, että ne tuovat syntien anteeksiannon ja syvemmän yhteyden Jumalaan.<br><br>Pappi tarjoaa sinulle uudenlaisen näkökulman elämään. Sen sijaan, että elämäsi pyörisi pelkästään kyläsi ympärillä, voit ymmärtää, että olet osa jotain suurempaa. Maailma on täynnä uusia mahdollisuuksia ja kokemuksia, jotka odottavat sinua.<br><br>Mitä teet?",
+				audio: 'audio/voices/kysypapiltauutisia.mp3',
+				points: 2,
+				choices: [
+					{ text: "Lähden mukaan pyhiinvaellukselle.", target: "uskon_voima" },
+					{ text: "Päätän jäädä kylään ja jatkaa töitä pelloilla.", target: "peltotoissa" },
+					{ text: "Yritän oppia lukemaan ja kirjoittamaan.", target: "lukemaan_opettelu" },
+					{ text: "Kävelen naapurikylään ja yritän levittää uutta uskoa.", target: "uskon_levittaminen" },
+					{ text: "Yhdistän vanhan ja uuden uskoni.", target: "uskonnon_sulautuminen" }
+					]	},
+				
+			peltotoissa: {
+			    placeholder: "Maaseudun kylä",
+				titleBgColor: 'bg-lime-950',
+				titleTextColor: 'text-lime-200',
+				text: "<img src='media/jatkantoita.png' alt='Jatkan töitä' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Papin sanat ovat mielenkiintoisia, mutta tunnet olosi turvalliseksi vain kotikylässäsi. Elämä on kovaa, mutta rehellinen työ pelloilla on tuttu ja turvallinen. Perheesi on onnellinen, kun jäät heidän luokseen. Kovan työn ansiosta sato on hyvä.",
+				audio: 'audio/voices/jatkantoita.mp3',
+				points: 1,
+				target: "seuraava_vaihe_2" },
+				
+			lukemaan_opettelu: {
+			    placeholder: "Maaseudun kylä",
+				titleBgColor: 'bg-lime-950',
+				titleTextColor: 'text-lime-200',
+				audio: 'audio/voices/lukemaanopettelu.mp3',
+				text: "<img src='media/lukemaanopettelu.png' alt='Opettelen lukemaan' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Haluat lukea pyhimystarinat itse ja ymmärtää, mistä papin tarinoissa on kyse. Käännytkin kiertävän papin puoleen ja pyydät häntä opettamaan sinua. Papin avulla opit lukemaan ja kirjoittamaan. Vaikka taito on harvinainen, se avaa sinulle uusia ovia ja antaa sinulle mahdollisuuden parempaan tulevaisuuteen.",
+				points: 2,
+				target: "seuraava_vaihe_2"	},
+				
+			uskon_levittaminen: {
+				placeholder: "Maaseudun kylä",
+				titleBgColor: 'bg-lime-950',
+				titleTextColor: 'text-lime-200',
+				audio: 'audio/voices/uskonlevittaminen.mp3',
+				text: "<img src='media/uskonlevittaminen.png' alt='Lähden levittämään uskoani' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Olet innostunut uusista asioista, mutta et ole kuitenkaan ymmärtänyt, miten uusiin asioihin tulisi suhtautua. Naapurikylän ihmiset eivät ole valmiita muutokseen, ja he ajavat sinut tiehesi. Joudut palaamaan takaisin kotiin pettyneenä.",
+				points: 0,
+				target: "seuraava_vaihe_2"
+				},
+				
+			uskonnon_sulautuminen: {
+				placeholder: "Maaseudun kylä",
+				titleBgColor: 'bg-lime-950',
+				titleTextColor: 'text-lime-200',
+				audio: 'audio/voices/uskonnonsulautuminen.mp3',
+				text: "<img src='media/uskonnonsulautuminen.png' alt='Sovellan uskontoa maailmankuvaani' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Näet papin tarinoissa yhtäläisyyksiä omaan elämääsi. Yhdistät siis viljanviljelyyn liittyvät rituaalit kristinuskon pyhimystarinoihin. Tämä tekee uskostasi ainutlaatuisen ja antaa sinulle uudenlaisen tavan ymmärtää maailmaa.",
+				points: 2,
+				target: "seuraava_vaihe_2"
+				},
+				
+            myy_pyhiinvaeltajille: {
+			    placeholder: "Suutarin pajassa",
+				titleBgColor: 'bg-[#6b4f40]',
+				titleTextColor: 'text-amber-200',
+				audio: 'audio/voices/myypyhiinvaeltajille.mp3',
+				text: "<img src='media/myypyhiinvaeltajalle.png' alt='Myyn kenkiä pyhiinvaeltajille' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Kävelet pitkin kauppakatua, mutta asiakkaita ei näy. Yrität huutaa myydäksesi tekemiäsi kenkiä, mutta useimmat ihmiset kävelevät vain ohi. Katseesi kuitenkin kiinnittyy joukkoon matkalaisia. He näyttävät väsyneiltä ja heillä on yllään rähjäiset vaatteet. Käsität, että he ovat pyhiinvaeltajia, jotka ovat matkalla kohti pyhiä paikkoja. Pyhiinvaellus on pitkä ja vaativa matka, ja heidän kenkänsä ovat selvästi kuluneet. Tajuat, että nämä pyhiinvaeltajat tarvitsevat uusia kenkiä enemmän kuin kukaan muu kaupungissa. Tarjoat heille tuotteitasi edulliseen hintaan, ja he ovat iloisia saadessaan uudet kengät. Olet oppinut, että vaikka ajat ovat vaikeita, aina löytyy ihmisiä, joilla on erityisiä tarpeita. Sinun on vain osattava tunnistaa nämä tarpeet.",
+				points: 2,
+				target: "seuraava_vaihe_3"
+				},
+				
+            kopioi_pyhimystarina: {
+				placeholder: "Elämää luostarissa",
+				titleBgColor: 'bg-stone-800',
+				titleTextColor: 'text-yellow-100',
+				audio: 'audio/voices/kopioipyhimystarina.mp3',
+				text: "<img src='media/kopioipyhimystarina.png' alt='Kopioin pyhimystarinan' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Päätät keskittyä apotin antamaan tehtävään. Valitset pergamentin, puhdistat sen huolella ja valmistelet musteen, jonka valmistat luostarin puutarhan kasveista. Aloitat tarinan kopioimisen pyhimys Fransiskus Assisilaisesta. Hän oli rikkaan kauppiaan poika, joka luopui omaisuudestaan ja perusti munkkikunnan, joka eli köyhyydessä ja opetti rakkaudesta luontoa ja eläimiä kohtaan.<br><br>Sinusta on koskettavaa kuvittaa kuva, jossa Fransiskus saarnaa linnuille, ja käytät kalliita pigmenttejä, kuten sinisen lapis lazulin jauhetta, joka on tuotu kaukaa. Olet luonut paitsi tarinan, myös taideteoksen, joka kertoo lukutaitottomillekin jotain pyhien ihmisten ihmeellisistä teoista. Apotti on sinuun tyytyväinen, ja olet oppinut, että tietoa voidaan säilyttää ja levittää kauniisti ja taiteellisesti.",
+				points: 3,
+				quiz: "lahteet"
+				},
+				
+            suunnittele_vesikanavan: { 
+				placeholder: "Elämää luostarissa",
+				titleBgColor: 'bg-stone-800',
+				titleTextColor: 'text-yellow-100',
+				audio: 'audio/voices/suunnittelevesikanavan.mp3',
+				text: "<img src='media/suunnittelenvesikanavan.png' alt='Suunnittelen vesikanavan' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Päätät ottaa haasteen vastaan. Tiedät, että muinaisessa Roomassa oli vesikanavia, akvedukteja, joiden avulla vesi johdettiin kaupunkeihin ja pelloille. Vaikka taitosi eivät riitä valtavien akveduktien rakentamiseen, suunnittelet tehokkaan järjestelmän, jossa luostarin pihakaivoista ja läheisestä purosta saadaan vesi johdettua puutarhan viljelypalstoille. Tehtäväsi vaatii tarkkaa mittaamista ja laskemista, jotta vesi virtaa oikein. Näin tehdessään munkki-veli auttaa sinua piirtämään kartan pergamentille. Valmistat myös pienen pienoismallin, jotta voit selittää sen apotille. Apotti on sinuun tyytyväinen, ja olet oppinut, että matemaattiset ja tekniset taidot ovat tärkeitä myös luostarielämän käytännön tarpeiden tyydyttämisessä.",
+				points: 2,
+				quiz: "lahteet" },
+				
+            luostarin_kirjasto: {
+				placeholder: "Elämää luostarissa",
+				titleBgColor: 'bg-stone-800',
+				titleTextColor: 'text-yellow-100',
+				audio: 'audio/voices/luostarinkirjasto.mp3',
+				text: "<img src='media/luostarinkirjasto.png' alt='Järjestän luostarin kirjaston' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Apotti antaa sinulle tehtävän, jotta luostarin arvokkaat käsikirjoitukset saataisiin järjestykseen. Aloitat vaativan työn. Et voi käyttää aakkosjärjestystä, sillä sitä ei ole vielä keksitty. Sen sijaan luokittelet kirjat niiden aiheen mukaan: teologiset tekstit, antiikin filosofia ja tieteelliset tutkielmat. Kiinnität jokaiseen teokseen tunnisteen, jotta tulevaisuudessa kuka tahansa pystyy löytämään etsimänsä nopeammin.<br><br>Työsi on hidasta, mutta vaivan arvoista. Apotti on tyytyväinen, koska nyt luostarin kirjasto toimii tehokkaammin. Olet oppinut, että tiedon järjestely on tärkeä osa sen säilyttämistä ja että jopa yksinkertaiset ideat voivat muuttaa maailmaa.",
+				points: 2,
+				quiz: "lahteet" },
+                        
+            // --- KAPITELI 2: Kirkon vaikutus ---
+            seuraava_vaihe_2: {
+				placeholder: "Aika kuluu",
+				titleBgColor: 'bg-slate-900',
+				titleTextColor: 'text-amber-100',
+				audio: 'audio/voices/aikakuluu.mp3',
+				text: "<img src='media/aikakuluu.png' alt='Aika kuluu' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Aika kuluu ja ympäröivä maailma jatkaa muuttumistaan. Olet kuullut, että Länsi-Rooman valtakunta on hajonnut, mikä on muuttanut monien elämän. Kaupankäynti on hiipunut, ja kaupungeista on tullut hiljaisia ja jopa hylättyjä paikkoja. Samaan aikaan idässä sijaitseva Bysantin valtakunta kukoistaa, sillä sen kauppa on vilkasta. Bysantti onkin ottanut Länsi-Rooman paikan maailman tärkeimpänä kauppapaikkana.<br><br>Olet oppinut, että kristinuskon vaikutus kasvaa kaikkialla. Se on muuttanut ihmisten ajattelua ja maailmankuvaa. Luostareista on tullut tärkeä osa tätä muutosta, sillä ne toimivat tiedon ja uskon keskuksina. Niissä munkit ja nunnat tekevät monenlaista työtä, viljelevät maata, hoitavat sairaita ja kopioivat vanhoja käsikirjoituksia, jotta tieto ei katoaisi.<br><br>Myös paavin valta Roomassa kasvaa päivä päivältä. Paavi, joka toimii kirkon johtajana, on nyt niin vaikutusvaltainen, että hän voi vaikuttaa jopa hallitsijoiden päätöksiin. Tämän vuoksi hänellä on suuri valta koko Euroopassa.",
+				target: "kyselyyn2" },
+            
+			matka_luostariin: {
+				placeholder: "Matka luostariin",
+				titleBgColor: 'bg-stone-700',
+				titleTextColor: 'text-stone-200',
+				audio: 'audio/voices/matkaluostariin.mp3',
+				text: "<img src='media/matkaluostariin.png' alt='Matka luostariin' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Matka luostariin on pitkä. Näet matkalla rapistuvia kaupunkeja ja ihmisiä, jotka elävät yksinkertaista elämää maalla. Lopulta saavut perille luostarin porteille, ja elämäsi muuttuu täysin.<br><br>Luostarin johtaja, apotti, ottaa sinut vastaan ja kertoo, että olet nyt munkkioppilas.<br><br>Luostarin elämä on kurinalaista ja säänneltyä. Jätät aateliselämän ylellisyydet ja sotilaalliset harjoitukset taaksesi. Saat yksinkertaisen kaavun yllesi, ja sinulle annetaan uusi nimi. Sinusta tulee osa munkkiveljeskuntaa.",
+				target: "munkki_alku" },
+            
+			uskon_voima: { 
+				placeholder: "Uskon voima",
+				titleBgColor: 'bg-violet-900',
+				titleTextColor: 'text-yellow-300',
+				audio: 'audio/voices/uskonvoima.mp3',
+				text: "<img src='media/uskonvoima.png' alt='Uskon voima' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Uskosta on tullut tärkeä osa elämääsi, ja papin sanat ovat iskostuneet syvälle mieleesi. Olet vakuuttunut siitä, että pyhiinvaellus voi tuoda sinulle ja perheellesi onnea ja turvaa. Päätät lähteä matkaan kohti tuntematonta, jotta voisit osoittaa uskollisuutesi Jumalalle. Matka on pitkä ja vaarallinen, mutta uskot, että palkkio on sen arvoinen.",
+				quiz: "kirkon_valta" },
+				
+            ehdota_luostaria: {
+				placeholder: "Matka luostariin",
+				titleBgColor: 'bg-amber-800',
+				titleTextColor: 'text-stone-100',
+				audio: 'audio/voices/ehdotaluostaria.mp3',
+				text: "<img src='media/ehdotaluostaria.png' alt='Kenkien myyntiä luostariin' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Mestarisi katse kirkastuu, kun ehdotat, että yritätte myydä kenkiä luostarille. – Loistava ajatus, oppipoikani! hän huudahtaa. – Luostarit ovat rikkaita ja tarvitsevat jatkuvasti uusia kenkiä munkeilleen ja nunnilleen. Matkaamme heti!<br><br>Matka on pitkä ja haastava, mutta lopulta saavutte luostarin porteille. Mestarisi neuvottelee apotin kanssa, luostarin johtajan, joka on vastuussa kaikesta. Kuuntelet tarkasti, miten mestarisi esittelee teidän kenkänne ja selittää, miksi ne ovat laadukkaita ja kestäviä. Apotti on vakuuttunut ja teette suuren sopimuksen.<br><br>Olet oppinut, että ammattitaidon lisäksi neuvottelutaidot ovat tärkeitä. Et ole enää vain käsityöläinen, vaan myös taitava myyjä. Olet saanut paljon arvokasta kokemusta, ja olet valmis ottamaan uusia haasteita vastaan.",
+				points: 3,
+				target: "seuraava_vaihe_3" },
+				
+            lahde_maalle: { 
+				placeholder: "Aika kuluu",
+				titleBgColor: 'bg-slate-900',
+				titleTextColor: 'text-amber-100',
+				audio: 'audio/voices/lahdemaalle.mp3',
+				text: "<img src='media/lahdemaalle.png' alt='Lähde maalle' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Kaupungin ahdas ja likainen elämä on vaihtunut maaseudun avariin maisemiin ja raikkaaseen ilmaan. Vaikka olet aiemmin keskittynyt suutarin työhön, joudut nyt opettelemaan uusia taitoja, sillä kaupankäynti ei enää toimi kuten ennen. Opit viljelemään maata ja hoitamaan eläimiä, ja ruokavaliosi on yksinkertainen, mutta selviät. Ymmärrät, että elämä on muutakin kuin työtä. Olet löytänyt rauhan ja tasapainon, ja olet onnellinen uudesta elämästäsi.",
+				target: "jatka_toita" },
+				
+			kyselyyn2: { 
+				placeholder: "Aika kuluu",
+				titleBgColor: 'bg-slate-900',
+				titleTextColor: 'text-amber-100',
+				audio: 'audio/voices/kyselyyn2.mp3',
+				text: "<img src='media/kysely.png' alt='Kysymyksiä' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Ennen kuin matkasi jatkuu, on aika testata tietosi. Vastaa alla oleviin kysymyksiin, niin näemme, mitä kaikkea olet oppinut keskiajasta.",
+				quiz: "kappale2_kysely" },
+			
+            // --- KAPITELI 3: Islamilainen maailma ---
+            seuraava_vaihe_3: {
+				music: 'audio/music/mystinenlaulu.mp3', // Mystinen teema alkaa tästä
+				placeholder: "Silkkitien kauppiaat",
+				titleBgColor: 'bg-teal-800',
+				titleTextColor: 'text-orange-300',
+				audio: 'audio/voices/silkkitienkauppias.mp3',
+                text: "<img src='media/silkkitienkauppias.png' alt='Silkkitien kauppiaat' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Vuodet ovat vierineet, ja ympäröivä maailma jatkaa muuttumistaan. Kuulet jatkuvasti tarinoita idästä, jossa uusi islaminuskoinen valtakunta kukoistaa. Tämä valtakunta, joka sai alkunsa 600-luvulla Arabian niemimaalla, on laajentunut nopeasti ja ulottuu nyt Lähi-idästä aina Pohjois-Afrikkaan ja jopa osiin Eurooppaa.<br><br>Heidän vaikutusvaltansa ulottuu myös kaupankäyntiin. Heidän kauppiaansa kulkevat Silkkitietä, joka on tärkeä kauppareitti Aasiasta Eurooppaan. He tuovat mukanaan uusia ja eksoottisia tuotteita, kuten mausteita ja silkkiä, joita et ole koskaan nähnyt. Heidän mukanaan saapuu myös uutta tietoa, kuten paperin valmistus, joka tekee kirjoittamisesta ja tiedon säilyttämisestä helpompaa. He ovat myös kehittäneet uusia keksintöjä, kuten kompassin, jota käytetään suunnistamiseen.<br><br>Eräänä päivänä eräs muslimikauppias saapuu kaupunkiisi. Hänellä on mukanaan tavaroita, joita et ole koskaan nähnyt. Hänen vaatteensa ovat eksoottisia, ja hän puhuu vierasta kieltä, mutta on oppinut myös kansasi kieltä, jota hän tarvitsee kaupankävijän ammatissaan. Hän ei vaikuta vaaralliselta, vaan ystävälliseltä. Hän etsii paikkaa, jossa voisi levähtää ja tehdä kauppaa.<br><br>— Olen Ahmed, ja olen matkustanut kaukaa. Minulla on mukanani paljon hyödyllisiä tavaroita, ja etsin paikkaa, jossa voisin levähtää, hän esittelee itsensä.<br><br>Mitä teet?",
+                choices: [
+                    { text: "Teen kauppaa hänen kanssaan.", target: "kauppa_islam" },
+                    { text: "Kuuntelen hänen tarinoitaan tieteestä.", target: "tiede_islam" },
+                    { text: "Olen varuillani ja vältän vierasta kauppiasta.", target: "valta_kauppiasta" }
+					]	},
+				
+			vaihe_3_aatelinen: {
+				music: 'audio/music/mystinenlaulu.mp3', // Mystinen teema alkaa tästä
+				placeholder: "Silkkitien kauppiaat",
+				titleBgColor: 'bg-teal-800',
+				titleTextColor: 'text-orange-300',
+				audio: 'audio/voices/silkkitienkauppiasaatelinen.mp3',
+				text: "<img src='media/silkkitienkauppias.png' alt='Silkkitien kauppiaat' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Vuodet ovat vierineet, ja ympäröivä maailma jatkaa muuttumistaan. Kuulet jatkuvasti tarinoita idästä, jossa uusi islaminuskoinen valtakunta kukoistaa. Tämä valtakunta, joka sai alkunsa 600-luvulla Arabian niemimaalla, on laajentunut nopeasti ja ulottuu nyt Lähi-idästä aina Pohjois-Afrikkaan ja jopa osiin Eurooppaa.<br><br>Heidän vaikutusvaltansa ulottuu myös kaupankäyntiin. Heidän kauppiaansa kulkevat Silkkitietä, joka on tärkeä kauppareitti Aasiasta Eurooppaan. He tuovat mukanaan uusia ja eksoottisia tuotteita, kuten mausteita ja silkkiä, joita et ole koskaan nähnyt. Heidän mukanaan saapuu myös uutta tietoa, kuten paperin valmistus, joka tekee kirjoittamisesta ja tiedon säilyttämisestä helpompaa. He ovat myös kehittäneet uusia keksintöjä, kuten kompassin, jota käytetään suunnistamiseen.<br><br>Eräänä päivänä eräs muslimikauppias saapuu kaupunkiisi. Hänellä on mukanaan tavaroita, joita et ole koskaan nähnyt. Hänen vaatteensa ovat eksoottisia, ja hän puhuu vierasta kieltä, mutta on oppinut myös kansasi kieltä, jota hän tarvitsee kaupankävijän ammatissaan. Hän ei vaikuta vaaralliselta, vaan ystävälliseltä. Hän etsii paikkaa, jossa voisi levähtää ja tehdä kauppaa. Kaupunkilaiset ovat kuulleet hänen nimensä olevan Ahmed.<br><br>Isäsi on sulkenut itsensä työhuoneeseensa huolestuneena. Muslimikauppiaan saapuminen on herättänyt hänessä ristiriitaisia tunteita. Yhtäältä hän uskoo, että islam saattaisi uhata kristinuskoa, toisaalta hän on utelias kuulemaan uudesta keksinnöstä, kompassista. Isäsi pyytää sinua selvittämään, mitä kauppiaalla on mukanaan ja onko hän luotettava.<br><br>Olet oppinut, että tieto on valtaa ja että uudet keksinnöt voivat muuttaa maailmaa. Tiedät myös, että uskonnolliset erot voivat aiheuttaa vaarallisia jännitteitä. On tärkeää toimia harkiten.<br><br>Mitä teet?",
+				choices: [
+						{ text: "Päätän mennä tapaamaan Ahmed-kauppiasta ja kysyä häneltä hänen keksinnöistään.", target: "tapaa_ahmed" },
+						{ text: "Kerään kaupungilla tietoja Ahmedista ja kerron ne isälleni.", target: "keraa_tietoa" },
+						{ text: "Kieltäydyn tapaamasta kauppiasta ja sanon isälleni, että hän on vaarallinen.", target: "valta_kauppiasta" }
+						] },
+				
+			tapaa_ahmed: {
+				placeholder: "Silkkitien kauppiaat",
+				titleBgColor: 'bg-cyan-900',
+				titleTextColor: 'text-cyan-100',
+				audio: 'audio/voices/tapaaahmed.mp3',
+				text: "<img src='media/tapaaahmed.png' alt='Tapaa Ahmed' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Näytät Ahmedille, että olet utelias ja ystävällinen. Hän kertoo sinulle kompassin toimintaperiaatteista ja uusista suunnistustaidoista, joita idässä käytetään. Olet oppinut uusia asioita, ja saatat tarvita niitä tulevaisuudessa.",
+				points: 2,
+				quiz: "keksintoja_islam" },
+				
+			keraa_tietoa: {
+				audio: 'audio/voices/keraatietoa.mp3',
+				text:"<img src='media/keraatietoa.png' alt='Kerää tietoa' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Saat kaupungilla luotetuilta henkilöiltä tietoja tästä erikoisesta kaupankävijästä. Kerrot isällesi, että Ahmed on kotoisin Bagdadista, suuresta kulttuuri- ja oppimiskeskuksesta. Kerrot myös, että muslimit ovat suvaitsevaisia muiden uskontojen harjoittamista kohtaan. Isäsi arvostaa sitä, että olit varovainen ja selvitit kauppiaan taustan, mutta hän ei luota vierasmaalaiseen täysin.",
+				points: 1,
+				target: "ristiretki_kutsu"	},
+				
+			vaihe_3_talonpoika: {
+				music: 'audio/music/mystinenlaulu.mp3', // Mystinen teema alkaa tästä
+				placeholder: "Silkkitien kauppiaat",
+				titleBgColor: 'bg-teal-800',
+				titleTextColor: 'text-orange-300',
+				audio: 'audio/voices/silkkitienkauppias.mp3',
+				text: "<img src='media/silkkitienkauppias.png' alt='Silkkitien kauppiaat' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Vuodet ovat vierineet, ja ympäröivä maailma jatkaa muuttumistaan. Kuulet jatkuvasti tarinoita idästä, jossa uusi islaminuskoinen valtakunta kukoistaa. Tämä valtakunta, joka sai alkunsa 600-luvulla Arabian niemimaalla, on laajentunut nopeasti ja ulottuu nyt Lähi-idästä aina Pohjois-Afrikkaan ja jopa osiin Eurooppaa.<br><br>Heidän vaikutusvaltansa ulottuu myös kaupankäyntiin. Heidän kauppiaansa kulkevat Silkkitietä, joka on tärkeä kauppareitti Aasiasta Eurooppaan. He tuovat mukanaan uusia ja eksoottisia tuotteita, kuten mausteita ja silkkiä, joita et ole koskaan nähnyt. Heidän mukanaan saapuu myös uutta tietoa, kuten paperin valmistus, joka tekee kirjoittamisesta ja tiedon säilyttämisestä helpompaa. He ovat myös kehittäneet uusia keksintöjä, kuten kompassin, jota käytetään suunnistamiseen.<br><br>Eräänä päivänä eräs muslimikauppias saapuu kaupunkiisi. Hänellä on mukanaan tavaroita, joita et ole koskaan nähnyt. Hänen vaatteensa ovat eksoottisia, ja hän puhuu vierasta kieltä, mutta on oppinut myös kansasi kieltä, jota hän tarvitsee kaupankävijän ammatissaan. Hän ei vaikuta vaaralliselta, vaan ystävälliseltä. Hän etsii paikkaa, jossa voisi levähtää ja tehdä kauppaa.<br><br>— Olen Ahmed, ja olen matkustanut kaukaa. Minulla on mukanani paljon hyödyllisiä tavaroita, ja etsin paikkaa, jossa voisin levähtää, hän esittelee itsensä.<br><br>Mitä teet?",
+				choices: [
+						{ text: "Menen tapaamaan Ahmed-kauppiasta ja kysyn häneltä uusista viljelymenetelmistä.", target: "ahmed_viljely" },
+						{ text: "Päätän kerätä viljaa ja myydä sitä kauppiaalle.", target: "kauppa_islam" },
+						{ text: "Pidän etäisyyttä kauppiaaseen ja keskityn vain omiin töihisi.", target: "valta_kauppiasta" }
+					]
+				},
+				
+			ahmed_viljely: {
+				placeholder: "Silkkitien kauppiaat",
+				titleBgColor: 'bg-teal-800',
+				titleTextColor: 'text-orange-300',
+				audio: 'audio/voices/ahmedviljely.mp3',
+				text: "<img src='media/ahmedviljely.png' alt='Ahmed kertoo viljelystä' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Sinulla on talonpojan intohimo maata kohtaan. Kun kysyt Ahmedilta uusista menetelmistä, hän kertoo sinulle kastelujärjestelmistä ja uusista viljelykasveista, kuten riisistä. Nämä tiedot voivat auttaa sinua parantamaan omaa satoasi ja perheesi tulevaisuutta.",
+				points: 3,
+				target: "ristiretki_kutsu" },
+				
+			vaihe_3_käsityöläinen: {
+				music: 'audio/music/mystinenlaulu.mp3', // Mystinen teema alkaa tästä
+				placeholder: "Silkkitien kauppiaat",
+				titleBgColor: 'bg-teal-800',
+				titleTextColor: 'text-orange-300',
+				audio: 'audio/voices/silkkitienkauppias.mp3',
+				text: "<img src='media/silkkitienkauppias.png' alt='Silkkitien kauppiaat' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Vuodet ovat vierineet, ja ympäröivä maailma jatkaa muuttumistaan. Kuulet jatkuvasti tarinoita idästä, jossa uusi islaminuskoinen valtakunta kukoistaa. Tämä valtakunta, joka sai alkunsa 600-luvulla Arabian niemimaalla, on laajentunut nopeasti ja ulottuu nyt Lähi-idästä aina Pohjois-Afrikkaan ja jopa osiin Eurooppaa.<br><br>Heidän vaikutusvaltansa ulottuu myös kaupankäyntiin. Heidän kauppiaansa kulkevat Silkkitietä, joka on tärkeä kauppareitti Aasiasta Eurooppaan. He tuovat mukanaan uusia ja eksoottisia tuotteita, kuten mausteita ja silkkiä, joita et ole koskaan nähnyt. Heidän mukanaan saapuu myös uutta tietoa, kuten paperin valmistus, joka tekee kirjoittamisesta ja tiedon säilyttämisestä helpompaa. He ovat myös kehittäneet uusia keksintöjä, kuten kompassin, jota käytetään suunnistamiseen.<br><br>Eräänä päivänä eräs muslimikauppias saapuu kaupunkiisi. Hänellä on mukanaan tavaroita, joita et ole koskaan nähnyt. Hänen vaatteensa ovat eksoottisia, ja hän puhuu vierasta kieltä, mutta on oppinut myös kansasi kieltä, jota hän tarvitsee kaupankävijän ammatissaan. Hän ei vaikuta vaaralliselta, vaan ystävälliseltä. Hän etsii paikkaa, jossa voisi levähtää ja tehdä kauppaa.<br><br>— Olen Ahmed, ja olen matkustanut kaukaa. Minulla on mukanani paljon hyödyllisiä tavaroita, ja etsin paikkaa, jossa voisin levähtää, hän esittelee itsensä.<br><br>Mitä teet?",
+				choices: [
+						{ text: "Päätän mennä tapaamaan Ahmed-kauppiasta ja kysyn paperinvalmistuksesta.", target: "ahmed_paperi" },
+						{ text: "Valmistan lisää tuotteita ja yritän myydä niitä matkalaisille, jotka tulevat idästä.", target: "kauppa_islam" },
+						{ text: "Kieltäydyn tapaamasta kauppiasta ja uskon, että vanhat tavat ovat parhaat.", target: "valta_kauppiasta" }
+					]
+				},
+				
+			vaihe_3_munkkioppilas: {
+				music: 'audio/music/mystinenlaulu.mp3', // Mystinen teema alkaa tästä
+				placeholder: "Silkkitien kauppiaat",
+				titleBgColor: 'bg-teal-800',
+				titleTextColor: 'text-orange-300',
+				audio: 'audio/voices/silkkitienkauppiasmunkki.mp3',
+				text: "<img src='media/silkkitienkauppias.png' alt='Silkkitien kauppiaat' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Vuodet ovat vierineet, ja ympäröivä maailma jatkaa muuttumistaan. Kuulet jatkuvasti tarinoita idästä, jossa uusi islaminuskoinen valtakunta kukoistaa. Tämä valtakunta, joka sai alkunsa 600-luvulla Arabian niemimaalla, on laajentunut nopeasti ja ulottuu nyt Lähi-idästä aina Pohjois-Afrikkaan ja jopa osiin Eurooppaa.<br><br>Heidän vaikutusvaltansa ulottuu myös kaupankäyntiin. Heidän kauppiaansa kulkevat Silkkitietä, joka on tärkeä kauppareitti Aasiasta Eurooppaan. He tuovat mukanaan uusia ja eksoottisia tuotteita, kuten mausteita ja silkkiä, joita et ole koskaan nähnyt. Heidän mukanaan saapuu myös uutta tietoa, kuten paperin valmistus, joka tekee kirjoittamisesta ja tiedon säilyttämisestä helpompaa. He ovat myös kehittäneet uusia keksintöjä, kuten kompassin, jota käytetään suunnistamiseen.<br><br>Eräänä päivänä eräs muslimikauppias saapuu kaupunkiisi. Hänellä on mukanaan tavaroita, joita et ole koskaan nähnyt. Hänen vaatteensa ovat eksoottisia, ja hän puhuu vierasta kieltä, mutta on oppinut myös kansasi kieltä, jota hän tarvitsee kaupankävijän ammatissaan. Hän ei vaikuta vaaralliselta, vaan ystävälliseltä. Hän etsii paikkaa, jossa voisi levähtää ja tehdä kauppaa.<br><br>— Olen Ahmed, ja olen matkustanut kaukaa. Minulla on mukanani paljon hyödyllisiä tavaroita, ja etsin paikkaa, jossa voisin levähtää, hän esittelee itsensä.<br><br>Mitä teet?",
+				choices: [
+						{ text: "Kysyn Ahmedilta hänen kulttuuristaan ja uskonnollisista näkemyksistään.", target: "ahmed_tausta" },
+						{ text: "Kysyn Ahmedilta antiikin filosofien teksteistä ja yritän hankkia niitä luostariin.", target: "ahmed_filosofia" },
+						{ text: "Varoitan Ahmed-kauppiasta, että hänen uskontonsa on väärä.", target: "kaannyta_ahmed" }
+					]
+				},
+				
+			ahmed_tausta: {
+				placeholder: "Silkkitien kauppiaat",
+				titleBgColor: 'bg-cyan-900',
+				titleTextColor: 'text-cyan-100',
+				audio: 'audio/voices/ahmedtausta.mp3',
+				text: "<img src='media/ahmedtausta.png' alt='Ahmedin tausta' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Päätät lähestyä kauppiasta kunnioittavasti. Ahmed kertoo sinulle islamista, sen opista ja historiasta. Vaikka uskosi on vankkumaton, opit ymmärtämään toista uskontoa. Alat ymmärtää, että ihmiset voivat olla samanlaisia riippumatta heidän uskonnostaan.", 
+				points: 2, 
+				target: "ristiretki_kutsu_munkki"
+				},
+				
+			ahmed_filosofia: {
+				placeholder: "Silkkitien kauppiaat",
+				titleBgColor: 'bg-cyan-900',
+				titleTextColor: 'text-cyan-100',
+				audio: 'audio/voices/ahmedfilosofia.mp3',
+				text: "<img src='media/ahmedfilosofia.png' alt='Keskustelen Ahmedin kanssa' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Tiedät, että luostareiden tehtävä on säilyttää tietoa. Kysyt Ahmedilta antiikin filosofien teoksista. Hän kertoo sinulle, että muslimit ovat kääntäneet vanhoja kreikkalaisia ja intialaisia tekstejä arabiaksi. Hän antaa sinulle kopion erään Hippokrateen lääketieteellisestä teoksesta. Teet palveluksen luostarille.", 
+				points: 3, 
+				target: "ristiretki_kutsu_munkki"
+				},
+				
+			kaannyta_ahmed: {
+				placeholder: "Silkkitien kauppiaat",
+				titleBgColor: 'bg-cyan-900',
+				titleTextColor: 'text-cyan-100',
+				audio: 'audio/voices/kaannytaahmed.mp3',
+				text: "<img src='media/kaannytaahmed.png' alt='Käännytän Ahmedin' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Olet vakuuttunut oman uskosi paremmuudesta, etkä usko, että islamista voisi olla mitään hyvää. Kehoitat Ahmedia kääntymään kristinuskoon, jotta hän pelastuisi. Ahmed järkyttyy, ja hän poistuu kaupungista välittömästi.", 
+				target: "ristiretki_kutsu_munkki"
+				},
+				
+            kauppa_islam: { 
+				placeholder: "Silkkitien kauppiaat",
+				titleBgColor: 'bg-teal-800',
+				titleTextColor: 'text-orange-300',
+				audio: 'audio/voices/kauppaislam.mp3',
+				text: "<img src='media/kauppaislam.png' alt='Ahmed esittelee keksintöjä' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Saat vaihdettua tavaroita pippuriin ja kaneliin. Opit myös uusista numeroista, jotka ovat paljon kätevämpiä kuin roomalaiset numerot.", 
+				quiz: "keksintoja_islam"
+				},
+				
+            tiede_islam: {
+				placeholder: "Silkkitien kauppiaat",
+				titleBgColor: 'bg-cyan-900',
+				titleTextColor: 'text-cyan-100',
+				audio: 'audio/voices/tiedeislam.mp3',
+				text: "<img src='media/tiedeislam.png' alt='Ahmed esittelee keksintöjä' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Kauppias kertoo lääkäri Ibn Sinasta ja näyttää sinulle astrolabin, jolla voi mitata aikaa tähtien avulla. Olet vaikuttunut.", 
+				points: 3, 
+				target: "ristiretki_kutsu"
+				},
+				
+            valta_kauppiasta: {
+				placeholder: "Silkkitien kauppiaat",
+				titleBgColor: 'bg-stone-600',
+				titleTextColor: 'text-yellow-500',
+				audio: 'audio/voices/valtakauppiasta.mp3',
+				text: "<img src='media/valtakauppiasta.png' alt='Vältän kauppiasta' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Pysyttelet etäällä vieraasta kauppiaasta. Et opi uusia asioita, mutta pysyt turvassa. Joskus varovaisuus on viisautta.", 
+				points: 0, 
+				target: "ristiretki_kutsu"
+				},
+				
+			ahmed_paperi: {
+				placeholder: "Silkkitien kauppiaat",
+				titleBgColor: 'bg-teal-800',
+				titleTextColor: 'text-orange-300',
+				audio: 'audio/voices/ahmedpaperi.mp3',
+				text: "<img src='media/ahmedpaperi.png' alt='Ahmed opettaa taidon' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Olet oivaltanut, että paperinvalmistus voisi mullistaa kaupankäynnin. Olet innokas oppimaan uusia asioita, ja Ahmed on iloinen opettaessaan sinulle uuden taitonsa. Paperinvalmistus tekee sinusta arvostetun käsityöläisen, ja pystyt myymään tuotteitasi kaikille.", 
+				points: 3, 
+				target: "ristiretki_kutsu"
+				},
+				
+            ristiretki_kutsu: {
+				music: 'audio/music/vaaralaulu.mp3', // Vaarateema alkaa tästä
+				placeholder: "Ristiretkeläiset",
+				titleBgColor: 'bg-red-950',
+				titleTextColor: 'text-stone-100',
+				audio: 'audio/voices/ristiretkikutsu.mp3',
+                text: "<img src='media/ristiretkikutsu.png' alt='Kutsu ristiretkelle' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Pian kaupunkiin saapuu uutisia, jotka muuttavat kaiken. Paavi on julistanut ristiretken eli pyhän sodan, jonka tarkoituksena on vapauttaa pyhä maa, Jerusalem, muslimien hallinnasta. Uutinen leviää nopeasti, ja lähiseudun ritarit ja talonpojat valmistautuvat lähtemään kohti tuntematonta. He uskovat, että osallistumalla sotaan he saavat syntinsä anteeksi.<br><br>Kaupunki on täynnä jännitystä, sillä monet perheet joutuvat sanomaan hyvästit läheisilleen. Ristiretki on vaarallinen matka, jolla voi menettää kaiken. Sinun on nyt päätettävä, mitä teet. Jäätkö kotiin vai lähdetkö seikkailuun?",
+                choices: [
+                    { text: "Lähden mukaan taistelijana, uskon puolesta!", target: "ristiretki_taistelu" },
+                    { text: "En lähde, sota ei ole minua varten.", target: "seuraava_vaihe_4" },
+                    { text: "Lähden mukaan varusteiden kantajana.", target: "lahde_kantajana" }
+					]
+				},
+				
+			ristiretki_kutsu_munkki: {
+				music: 'audio/music/vaaralaulu.mp3', // Vaarateema alkaa tästä
+				placeholder: "Paavin julistus",
+				titleBgColor: 'bg-red-950',
+				titleTextColor: 'text-stone-100',
+				audio: 'audio/voices/ristiretkikutsumunkki.mp3',
+				text: "<img src='media/ristiretkikutsumunkki.png' alt='Kutsu ristiretkelle' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Paavi julistaa ristiretken, ja luostaristasi pyydetään apua. Munkkien tehtävä ei ole sotia, mutta heitä tarvitaan matkan aikana moniin tärkeisiin tehtäviin. Olet nuori ja utelias, ja ajatus pyhän maan näkemisestä kiehtoo sinua. <br><br>Miten päätät palvella kristikuntaa?",
+				choices: [
+					{ text: "Lähden mukaan auttamaan haavoittuneiden hoidossa.", target: "hoida_haavoittuneita_ristiretki" },
+					{ text: "Lähden mukaan kirjuriksi tallentamaan ristiretken tapahtumia.", target: "lahde_kirjurina" },
+					{ text: "En lähde. Keskityn luostarin töihin.", target: "seuraava_vaihe_4" }
+				]
+			},
+			
+            ristiretki_taistelu: {
+				placeholder: "Taistelu",
+				titleBgColor: 'bg-slate-700',
+				titleTextColor: 'text-red-500',
+				audio: 'audio/voices/ristiretkitaistelu.mp3',
+                text: "<img src='media/ristiretkitaistelu.png' alt='Taistelu' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Lähdet ristiretkelle täynnä intoa. Matkaat pitkään, kunnes saavut viimein Pyhään maahan, ja sinut valtaa uskonnollinen into. Maisema on kuiva ja pölyinen, aivan erilainen kuin kotimaasi vihreät metsät ja pellot. Edessäsi on ensimmäinen suuri taistelu, ja sydämesi sykkii kiivaasti. Ristiretkeläiset ovat valmistautuneet taisteluun, ja ilmaan on sekoittunut jännitys ja pelko. Kokoat joukkosi ja valmistaudut taistelemaan.<br><br>Sinun on nyt päätettävä, miten toimit taistelussa."
+            },
+			
+			selviydy_taistelusta_miekka: {
+				placeholder: "Voittoisa taistelu",
+				titleBgColor: 'bg-slate-700',
+				titleTextColor: 'text-red-500',
+				audio: 'audio/voices/selviydytaistelustamiekka.mp3',
+				text: "<img src='media/selviydytaistelustamiekka.png' alt='Selviydy taistelusta' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Hyökkäät eturintamassa, näyttäen muille esimerkkiä. Aiempi miekkailuharjoittelusi kotilinnasi pihalla on tehnyt sinusta taitavan miekkailijan, ja onnistut torjumaan useita hyökkäyksiä samalla, kun teet tuhoisaa jälkeä vihollisen joukoissa. Taistelu on hurja. Moni taistelutoverisi kaatuu viereltäsi, mutta selviät itse kunnialla. Saat urheudestasi ansaitsemasi arvostuksen sotilaiden keskuudessa. Olet nähnyt sodan kauhut, mutta taitosi ja rohkeutesi pelastivat sinut varmalta kuolemalta.",
+				points: 3,
+				target: "seuraava_vaihe_4"
+			},
+			
+			hoida_haavoittuneita_ristiretki: { 
+				placeholder: "Ristiretken kenttäsairaala",
+				titleBgColor: 'bg-amber-900',
+				titleTextColor: 'text-stone-300',
+				audio: 'audio/voices/hoidahaavoittuneitaristiretki.mp3',
+				text: "<img src='media/hoidahaavoittuneitaristiretki.png' alt='Hoidan haavoittuneita' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Lähdet ristiretkelle parantajan roolissa. Matka on raskas, mutta velvollisuudentuntosi on vahva. Taistelukentän laidalle pystytetyssä teltassa kohtaat sodan todelliset kasvot: tuskan ja kärsimyksen. Käytät luostarissa oppimiasi taitoja hoitaaksesi haavoja yrteillä ja sitoaksesi murtuneita raajoja. Työsi on armotonta, mutta onnistut pelastamaan useita henkiä rukousten ja lääkintätaitojesi avulla. Et taistellut miekalla, mutta taistelusi ihmishenkien puolesta ansaitsee sinulle suurta kunnioitusta. Olet nähnyt maailmaa ja oppinut enemmän lääkinnästä kuin kirjoista olisi koskaan voinut lukea.",
+				points: 2,
+				target: "seuraava_vaihe_4"
+				},
+				
+            selviydy_taistelusta: {
+				placeholder: "Voittoisa taistelu",
+				titleBgColor: 'bg-slate-700',
+				titleTextColor: 'text-red-500',
+				audio: 'audio/voices/selviydytaistelusta.mp3',
+				text: "<img src='media/selviydytaistelusta.png' alt='Selviydyn taistelusta' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Tarkkaavaisuutesi ja taitosi jousen kanssa auttavat sinua selviytymään taistelusta. Olet nähnyt sodan kauhut, mutta olet elossa.", 
+				points: 3, 
+				target: "seuraava_vaihe_4" },
+				
+            auta_haavoittuneita: {
+				placeholder: "Ristiretken kenttäsairaala",
+				titleBgColor: 'bg-amber-900',
+				titleTextColor: 'text-stone-300',
+				audio: 'audio/voices/auta_haavoittuneita.mp3',
+				text: "<img src='media/autahaavoittuneita.png' alt='Autan haavoittuneita' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Riskialtis työsi haavoittuneiden parissa pelastaa monia henkiä. Saat sotilaiden kunnioituksen ja opit paljon lääkinnästä.", 
+				points: 3, 
+				target: "seuraava_vaihe_4" },
+				
+            lahde_kantajana: {
+				placeholder: 'Pölyinen tie etelään',
+				titleBgColor: 'bg-yellow-900',
+				titleTextColor: 'text-stone-300',
+				audio: 'audio/voices/lahdekantajana.mp3',
+				text: "<img src='media/lahdekantajana.png' alt='Lähden kantajana' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Matka on vaarallinen, mutta selviät. Et osallistu taisteluihin, mutta näet ja koet paljon. Ansaitset muutaman kolikon, jotka auttavat sinua tulevaisuudessa.", 
+				points: 3, 
+				target: "seuraava_vaihe_4" },
+				
+			lahde_kirjurina: {
+				placeholder: 'Kronikan kirjoittaja',
+				titleBgColor: 'bg-slate-800',
+				titleTextColor: 'text-amber-200',			
+				audio: 'audio/voices/lahdekirjurina.mp3',
+				text: "<img src='media/lahdekirjurina.png' alt='Lähde kirjurina' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Valitset ottaa mukaan pergamenttisi ja musteesi ja lähdet ristiretkeläisten mukaan. Tehtäväsi on tallentaa tapahtumat kronikkaan, jotta ne säilyvät tuleville sukupolville. Matkan aikana näet ja koet monia asioita, joita et olisi luostarin muurien sisällä koskaan voinut kuvitella. Et taistele, mutta olet etulinjassa todistamassa sekä uskonnollisen innostuksen että sodan julmuuden.<br><br>Saavutte vihollisen alueelle. Joukkojen valmistautuessa taisteluun, yrität pitää muistiinpanosi turvassa ja valmistelet itsesi todistamaan tulevia tapahtumia. Taistelun alkaessa pääset turvaan, mutta yllättävä hyökkäys vaarantaa myös sinun ja kirjoitustesi kohtalon. Yrität suojata kaikkia muistiinpanojasi, mutta joudut pakenemaan. Vihollinen on vallannut leirin, ja joudut jättämään kaikki tavarasi taaksesi. Pakenet ja yrität selvitä hengissä.<br><br>Mitä teet?",
+				choices: [
+					{ text: "Pakenen lähimpään kaupunkiin ja yritän aloittaa uuden elämän.", target: "pakenen_kaupunkiin" },
+					{ text: "Yritän päästä takaisin luostariin.", target: "pakenen_luostariin" }
+					]
+				},
+			
+			pakenen_luostariin: {
+				music: 'audio/music/yleislaulu.mp3',
+				placeholder: 'Matka takaisin kotiin',
+				titleBgColor: 'bg-stone-800',
+				titleTextColor: 'text-stone-300',
+				audio: 'audio/voices/pakenenluostariin.mp3',
+				text: "<img src='media/pakenenluostariin.png' alt='Pakenen luostariin' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Päätät yrittää matkata takaisin luostariin. Matka on pitkä ja vaarallinen, täynnä tuntemattomia teitä ja vaaroja. Joudut matkustamaan öisin, välttelemään rosvoja ja anomaan ruokaa pienistä kylistä, joihin matkasi osuu. Selviytymisesi ei ole itsestäänselvyys, mutta usko ja päättäväisyys pitävät sinut liikkeellä.<br><br>Pääset lopulta takaisin luostariin, kuluneena mutta elossa. Apotti on yllättynyt, mutta iloinen nähdessään sinut. Vaikka menetit muistiinpanosi, kerrot hänelle kaiken kokemastasi: sodan kauhuista, vieraista maista ja erilaisista kulttuureista. Apotti kuuntelee sinua kiinnostuneena ja antaa sinulle tehtävän kirjoittaa uusi kronikka, joka perustuu omiin kokemuksiisi ja muistikuviisi. Sinusta tulee ensimmäinen munkki, joka on kirjoittanut silminnäkijäkuvauksen ristiretkestä. Olet oppinut, että tietoa voi kantaa myös sydämessään ja mielessään, ja että elämä on paras opettaja.",
+				points: 3,
+				target: "seuraava_vaihe_4"
+				},
+			
+			pakenen_kaupunkiin: {
+				music: 'audio/music/yleislaulu.mp3',
+				placeholder: 'Pakolaisena muurien suojissa',
+				titleBgColor: 'bg-gray-800',
+				titleTextColor: 'text-orange-400',
+				audio: 'audio/voices/pakenenkaupunkiin.mp3',
+				text: "<img src='media/pakenenkaupunkiin.png' alt='Pakenen kaupunkiin' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Olet onnistunut pakenemaan kaupunkiin. Joudut luopumaan munkin kaavustasi, jotta et herättäisi huomiota, ja pukeudut tavallisen kansan vaatteisiin. Kaupunki on vilkas, mutta täynnä vaaroja. Sinun on löydettävä tapa elää uudessa maailmassa, jossa kirjanoppineisuudellasi ei ole entisenlaista arvoa. Sinun on löydettävä itsellesi uusi ammatti. Eräänä päivänä kävelet kadulla, ja eteen osuu kaksi erilaista mahdollisuutta.<br><br>Mitä teet?",
+				choices: [
+					{ text: "Etsit töitä kirjurina.", target: "kirjuri_kauppiaalle" },
+					{ text: "Etsit töitä kaupungin vartiostosta.", target: "vartija_kaupungissa" },
+					{ text: "Yrität onneasi noppapelissä.", target: "kuolema_noppapelissa" }
+					]
+				},
+
+			kirjuri_kauppiaalle: {
+				placeholder: 'Kauppiaan palveluksessa',
+				titleBgColor: 'bg-amber-900',
+				titleTextColor: 'text-amber-200',
+				audio: 'audio/voices/kirjurikauppiaalle.mp3',
+				text: "<img src='media/kirjurikauppiaalle.png' alt='Kirjuri kauppiaalle' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Kyselet ympäriinsä ja lopulta saat töitä kauppiaalta, jota autat pitämään kirjaa hänen myytävien tavaroiden varastostaan. Työ on turvallista, ja saat säännöllistä palkkaa. Kauppias on tyytyväinen, ja olet oppinut, että aiemmat oppisi luostarissa on hyödyllinen myös arkisessa elämässä.",
+				points: 3,
+				target: "seuraava_vaihe_4"
+				},
+
+			vartija_kaupungissa: {
+				placeholder: 'Kaupungin yövartio',
+				titleBgColor: 'bg-slate-900',
+				titleTextColor: 'text-sky-300',
+				audio: 'audio/voices/vartijakaupungissa.mp3',
+				text: "<img src='media/vartijakaupungissa.png' alt='Vartijana kaupungissa' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Liityt kaupungin vartiostoon. Kunnioitusta työtä hakiessasi herättää se, että osaat lukea, joka on keskiajalla harvinaista. Työ on vaarallista, mutta saat säännöllistä palkkaa ja opit tuntemaan kaupungin kujat ja ihmiset. Saat porvarien kunnioituksen.",
+				points: 1,
+				target: "seuraava_vaihe_4"
+				},
+
+			kuolema_noppapelissa: {
+				placeholder: 'Onneton loppu',
+				titleBgColor: 'bg-black',
+				titleTextColor: 'text-red-700',
+				audio: 'audio/voices/kuolemanoppapelissa.mp3',
+				gameOver: true,
+				text: "<img src='media/kuolemanoppapelissa.png' alt='Kuolema noppapelissä' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Päätät lähteä kokeilemaan onneasi, mutta joudut huijatuksi ja menetät kaikki rahasi. Ryhmä vartijoita luulee sinua rosvoksi ja pidättää sinut. Joudut vankityrmään, jossa heikkovointisena menehdyt saamaasi tautiin. Seikkailusi päättyy tähän."
+				},
+			
+            // --- KAPITELI 4: Sääty-yhteiskunta ---
+            seuraava_vaihe_4: { 
+				music: 'audio/music/yleislaulu.mp3',
+				placeholder: 'Sääty-yhteiskunta',
+				titleBgColor: 'bg-gray-700',
+				titleTextColor: 'text-gray-200',
+				audio: 'audio/voices/seuraavavaihe4.mp3',
+				text: "<img src='media/seuraavavaihe4.png' alt='Sääty-yhteiskunta' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Olet elänyt jo pitkään keskiaikaista elämää, ja olet huomannut, että yhteiskunta on jakautunut säätyihin. Sääty tarkoittaa yhteiskuntaluokkaa, johon ihminen kuului syntymänsä perusteella. Säätyjä on kolme: aatelisto, papisto ja kolmas sääty.<br><br>Aatelisto koostuu maanomistajista, jotka saavat maata hallitsijalta. Vastineeksi he toimittavat sotilaita kuninkaan armeijaan. Papisto on kirkon palveluksessa toimiva sääty, johon liitytään koulutuksen kautta. Kolmas sääty koostuu kaikista muista ihmisistä, kuten talonpojista, käsityöläisistä ja kauppiaista. Heidän tehtävänään on maksaa veroja ja tehdä työtä ylempien säätyjen hyväksi.<br><br>Olet oppinut, että sääty määrittää elämäsi. Se vaikuttaa siihen, mitä voit tehdä ja mitä et voi. Se vaikuttaa myös siihen, minkälaista elämää elät. Olet kuitenkin myös kuullut tarinoita mahtavasta kuninkaasta nimeltä Kaarle Suuri, joka yhdisti laajoja alueita Euroopassa ja loi valtakuntaansa yhteiset lait ja rahan. Hän rakensi valtakuntaansa myös hovin, joka oli paitsi hänen asuinpaikkansa, myös kulttuurin ja oppimisen keskus.<br><br>On aika testata tietosi keskiajan sääty-yhteiskunnasta ja Kaarle Suuren valtakunnasta.", quiz: "saadyt" },
+            
+            // --- KAPITELI 5: Kaupunkien kasvu ---
+            seuraava_vaihe_5: {
+				music: 'audio/music/yleislaulu.mp3',
+				placeholder: 'Keskiajan vilkas kaupunki',
+                titleBgColor: 'bg-orange-900',
+				titleTextColor: 'text-orange-200',
+				audio: 'audio/voices/seuraavavaihe5.mp3',
+                text: "<img src='media/seuraavavaihe5.png' alt='Keskiajan vilkas kaupunki' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Kauppa on elpynyt, ja uusi aika on koittanut. Maaseutu on hiljainen, ja yhä useammat ihmiset muuttavat kaupunkeihin etsimään parempaa elämää. Sinäkin muutat yhteen suurista kaupungeista. Elämä täällä on vilkasta mutta ahdasta, ja kapeilla kujilla on tungosta.<br><br>Näet kaupunkeja ympäröivät korkeat muurit, joiden portit avataan aamuisin ja suljetaan iltaisin. Kaupungin kaduilla käy kuhina, ja kauppiaat ja porvarit ovat voimissaan. Porvarit ovat vauraita käsityöläisiä ja kauppiaita, jotka haluavat vaikuttaa kaupungin asioihin.<br><br>Ammattikunnat ovat kaupungin voimavara. Ne ovat kuin ammattiyhdistyksiä, jotka valvovat omien alojensa etuja ja päättävät esimerkiksi siitä, kuka saa harjoittaa ammattia kaupungissa. Sinulla on tilaisuus liittyä tähän uuteen yhteiskuntaluokkaan ja ottaa oma paikkasi.<br><br>Mitä teet?",
+                choices: [
+                    { text: "Yritän päästä mestariksi omassa ammatissani.", target: "mestariksi" },
+                    { text: "Nautin kaupungin juhlista ja karnevaaleista.", target: "karnevaalit" },
+                    { text: "Liityn kaupungin vartiostoon.", target: "liity_vartiostoon" }
+					]
+				},
+				
+			vaihe_5_aatelinen: {
+				music: 'audio/music/yleislaulu.mp3',
+				placeholder: 'Keskiajan vilkas kaupunki',
+                titleBgColor: 'bg-orange-900',
+				titleTextColor: 'text-orange-200',
+				audio: 'audio/voices/seuraavavaihe5.mp3',
+				text: "<img src='media/seuraavavaihe5.png' alt='Keskiajan vilkas kaupunki' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Kauppa on elpynyt, ja uusi aika on koittanut. Maaseutu on hiljainen, ja yhä useammat ihmiset muuttavat kaupunkeihin etsimään parempaa elämää. Sinäkin muutat yhteen suurista kaupungeista. Elämä täällä on vilkasta mutta ahdasta, ja kapeilla kujilla on tungosta.<br><br>Näet kaupunkeja ympäröivät korkeat muurit, joiden portit avataan aamuisin ja suljetaan iltaisin. Kaupungin kaduilla käy kuhina, ja kauppiaat ja porvarit ovat voimissaan. Porvarit ovat vauraita käsityöläisiä ja kauppiaita, jotka haluavat vaikuttaa kaupungin asioihin.<br><br>Ammattikunnat ovat kaupungin voimavara. Ne ovat kuin ammattiyhdistyksiä, jotka valvovat omien alojensa etuja ja päättävät esimerkiksi siitä, kuka saa harjoittaa ammattia kaupungissa. Sinulla on tilaisuus liittyä tähän uuteen yhteiskuntaluokkaan ja ottaa oma paikkasi.<br><br>Mitä teet?",
+				choices: [
+					{ text: "Perustan oman ammattikunnan, joka hallitsee kauppaa.", points: 3, target: "aatelinen_kauppa" },
+					{ text: "Päätän mennä tutustumaan kaupungin juhliin ja karnevaaleihin.", target: "karnevaalit" }
+					]
+				},
+				
+			vaihe_5_talonpoika: {
+				music: 'audio/music/yleislaulu.mp3',
+				placeholder: 'Keskiajan vilkas kaupunki',
+                titleBgColor: 'bg-orange-900',
+				titleTextColor: 'text-orange-200',
+				audio: 'audio/voices/seuraavavaihe5.mp3',
+				text: "<img src='media/seuraavavaihe5.png' alt='Keskiajan vilkas kaupunki' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Kauppa on elpynyt, ja uusi aika on koittanut. Maaseutu on hiljainen, ja yhä useammat ihmiset muuttavat kaupunkeihin etsimään parempaa elämää. Sinäkin muutat yhteen suurista kaupungeista. Elämä täällä on vilkasta mutta ahdasta, ja kapeilla kujilla on tungosta.<br><br>Näet kaupunkeja ympäröivät korkeat muurit, joiden portit avataan aamuisin ja suljetaan iltaisin. Kaupungin kaduilla käy kuhina, ja kauppiaat ja porvarit ovat voimissaan. Porvarit ovat vauraita käsityöläisiä ja kauppiaita, jotka haluavat vaikuttaa kaupungin asioihin.<br><br>Ammattikunnat ovat kaupungin voimavara. Ne ovat kuin ammattiyhdistyksiä, jotka valvovat omien alojensa etuja ja päättävät esimerkiksi siitä, kuka saa harjoittaa ammattia kaupungissa. Sinulla on tilaisuus liittyä tähän uuteen yhteiskuntaluokkaan ja ottaa oma paikkasi.<br><br>Mitä teet?",
+				choices: [
+					{ text: "Yritän liittyä johonkin ammattikuntaan oppipojaksi.", target: "killan_jasen" },
+					{ text: "Päätän mennä tutustumaan kaupungin juhliin ja karnevaaleihin.", target: "karnevaalit" }
+					]
+				},
+				
+			vaihe_5_munkki: {
+				music: 'audio/music/yleislaulu.mp3',
+				placeholder: 'Keskiajan vilkas kaupunki',
+                titleBgColor: 'bg-orange-900',
+				titleTextColor: 'text-orange-200',
+				audio: 'audio/voices/vaihe5munkki.mp3',
+				text: "<img src='media/seuraavavaihe5.png' alt='Keskiajan vilkas kaupunki' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Kauppa on elpynyt, ja uusi aika on koittanut. Maaseutu on hiljainen, ja yhä useammat ihmiset muuttavat kaupunkeihin etsimään parempaa elämää. Sinäkin muutat yhteen suurista kaupungeista. Elämä täällä on vilkasta mutta ahdasta, ja kapeilla kujilla on tungosta.<br><br>Näet kaupunkeja ympäröivät korkeat muurit, joiden portit avataan aamuisin ja suljetaan iltaisin. Kaupungin kaduilla käy kuhina, ja kauppiaat ja porvarit ovat voimissaan. Porvarit ovat vauraita käsityöläisiä ja kauppiaita, jotka haluavat vaikuttaa kaupungin asioihin.<br><br>Ammattikunnat ovat kaupungin voimavara. Ne ovat kuin ammattiyhdistyksiä, jotka valvovat omien alojensa etuja ja päättävät esimerkiksi siitä, kuka saa harjoittaa ammattia kaupungissa.<br><br>Luostarin johtaja on lähettänyt sinut kaupunkiin. Tehtäväsi on tutkia uusia ajatuksia ja keksintöjä, joita kaupungeissa syntyy.<br><br>Mitä teet?",
+				choices: [
+					{ text: "Yritän löytää uusia kirjoituksia ja keksintöjä luostariin.", target: "munkin_hankinnat" },
+					{ text: "Varoitan ihmisiä kaupungin pahoista tavoista.", target: "munkin_varoitus" }
+					]
+				},
+				
+			munkin_hankinnat: {
+				placeholder: 'Tiedonjano',
+				titleBgColor: 'bg-cyan-900',
+				titleTextColor: 'text-cyan-100',
+				audio: 'audio/voices/munkinhankinnat.mp3',
+				text: "<img src='media/munkinhankinnat.png' alt='Munkin hankinnat' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Etsit kaupungista uusia kirjoituksia ja keksintöjä, joita voisit viedä luostariin. Olet oppinut uusia asioita, ja saatat tarvita niitä tulevaisuudessa.",
+				points: 3,
+				target: "musta_surma_alku"
+				},
+				
+			munkin_varoitus: {
+				placeholder: 'Synnin palkka',
+				titleBgColor: 'bg-stone-800',
+				titleTextColor: 'text-red-400',
+				audio: 'audio/voices/munkinvaroitus.mp3',
+				text: "<img src='media/munkinvaroitus.png' alt='Munkin varoitus' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Olet huolissasi kaupungin synneistä. Varoitat ihmisiä, mutta kukaan ei usko sinua.",
+				target: "musta_surma_alku"
+				},
+				
+			aatelinen_kauppa: {
+				placeholder: 'Porvarien valta',
+				titleBgColor: 'bg-orange-900',
+				titleTextColor: 'text-orange-200',
+				audio: 'audio/voices/aatelinenkauppa.mp3',
+				text: "<img src='media/aatelinenkauppa.png' alt='Porvarien valta' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Vaikka olet aatelinen, päätät muuttaa kaupunkiin. Näet, että porvarit ovat saamassa valtaa aatelistolta. Koet, että sinulla on vielä mahdollisuus vaikuttaa asioihin. Luot oman ammattikunnan, joka saa paljon valtaa kaupungin asioihin. Opit, että raha ja kauppa ovat uuden vallan lähteitä.",
+				points: 3,
+				target: "musta_surma_alku"
+				},
+				
+			killan_jasen: {
+				placeholder: 'Oppipojan tie',
+				titleBgColor: 'bg-orange-900',
+				titleTextColor: 'text-orange-200',
+				audio: 'audio/voices/killanjasen.mp3',
+				text: "<img src='media/killanjasen.png' alt='Oppipojan tie' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Vaikka sinulla ei ole koulutusta, olet ahkera ja taitava käsistäsi. Onnistutkin saamaan paikan oppipoikana. Opit ammatin saloja.",
+				points: 3,
+				target: "musta_surma_alku"
+				},
+				
+            mestariksi: {
+				placeholder: 'Mestarin arvo',
+				titleBgColor: 'bg-orange-900',
+				titleTextColor: 'text-orange-200',
+				audio: 'audio/voices/mestariksi.mp3',
+				text: "<img src='media/mestariksi.png' alt='Tie mestariksi' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Työskentelet vuosia oppipojana ja kisällinä. Lopulta teet mestarinäytteen ja sinusta tulee arvostettu mestari. Saat paljon valtaa ammattikunnassasi.", 
+				points: 3, 
+				target: "musta_surma_alku" },
+				
+            karnevaalit: { 
+				placeholder: 'Karnevaalit',
+				titleBgColor: 'bg-orange-900',
+				titleTextColor: 'text-orange-200',
+				audio: 'audio/voices/karnevaalit.mp3',
+				text: "<img src='media/karnevaalit.png' alt='Karnevaalit' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Kaupungin juhlat ovat riehakkaita. Unohdat arjen huolet hetkeksi. Elämä on muutakin kuin työtä.", 
+				points: 0, 
+				target: "musta_surma_alku" },
+				
+            liity_vartiostoon: {
+				placeholder: 'Muurien vartija',
+				titleBgColor: 'bg-slate-900',
+				titleTextColor: 'text-sky-300',
+				audio: 'audio/voices/liityvartiostoon.mp3',
+				text: "<img src='media/liityvartiostoon.png' alt='Liityn vartiostoon' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Liityt kaupungin vartiostoon. Työ on vaarallista, mutta saat säännöllistä palkkaa ja opit tuntemaan kaupungin kujat ja ihmiset. Saat porvarien kunnioituksen.",
+				points: 2,
+				target: "vartijan_yo"
+				},
+				
+            vartijan_yo: {
+				music: 'audio/music/vaaralaulu.mp3', // Vaarateema alkaa tästä
+                placeholder: 'Yö pimeillä kujilla',
+				titleBgColor: 'bg-slate-900',
+				titleTextColor: 'text-sky-300',
+				audio: 'audio/voices/vartijanyo.mp3',
+                text: "<img src='media/vartijanyo.png' alt='Yövartiossa' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Ensimmäinen yövuorosi vartiostossa on alkanut. Kuulet epäilyttävää ääntä pimeältä kujalta. Mitä teet?",
+                choices: [
+                    { text: "Menen tutkimaan ääntä yksin.", target: "gameOver_vartija" },
+                    { text: "Haen apua toiselta vartijalta ennen kuin menen.", target: "selviydy_kujalta" },
+                    { text: "Pysyn vaiti ja jatkan partiointia pääkadulla.", target: "valta_kujalta" }
+					]
+				},
+				
+            selviydy_kujalta: {
+				placeholder: 'Järjestys palautettu',
+				titleBgColor: 'bg-slate-900',
+				titleTextColor: 'text-sky-300',
+				audio: 'audio/voices/selviydykujalta.mp3',
+				text: "<img src='media/selviydykujalta.png' alt='Selviydyn kujalta' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Yhdessä toisen vartijan kanssa yllätätte rosvojoukon. Saat kiitosta ja opit, että yhteistyö on voimaa.",
+				points: 3,
+				target: "musta_surma_alku"
+				},
+				
+            valta_kujalta: {
+				placeholder: 'Varovaisuus on viisautta',
+				titleBgColor: 'bg-slate-900',
+				titleTextColor: 'text-sky-300',
+				audio: 'audio/voices/valtakujalta.mp3',
+				text: "<img src='media/valtakujalta.png' alt='Vältä kujaa' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Päätät olla ottamatta riskiä. Aamulla kuulet, että eräs kauppias on ryöstetty. Et saanut pisteitä, mutta olet turvassa.",
+				points: 0,
+				target: "musta_surma_alku"
+				},
+				
+            musta_surma_alku: {
+				music: 'audio/music/vaaralaulu.mp3', // Vaarateema alkaa tästä
+				titleBgColor: 'bg-black',
+				titleTextColor: 'text-green-400',
+                placeholder: "Musta Surma",
+				audio: 'audio/voices/mustasurmaalku.mp3',
+                text: "<img src='media/mustasurmaalku.png' alt='Musta Surma' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Pian kauppalaivojen mukana saapuu kauhistuttava ruttoepidemia, jota aletaan kutsua nimellä Musta surma. Tauti leviää kulovalkean tavoin ahtaissa ja likaisissa kaupungeissa. Pian kadut täyttyvät sairaista ja kuolleista, ja pelko leviää nopeasti. Kaupungin muurit, jotka aiemmin tarjosivat turvaa, pitävät nyt sisällään kuoleman.<br><br>Mitä teet?",
+                choices: [
+                    { text: "Eristäydyn kotiini ja vältän ihmisiä (karanteeni).", target: "karanteeni" },
+                    { text: "Rukoilen apua pyhimyksiltä ja autan sairaita.", target: "gameOver_rutto" },
+                    { text: "Pakenen kaupungista maaseudulle.", target: "pakene_maalle" }
+					]
+				},
+			
+            karanteeni: {
+				placeholder: 'Eristyksissä rutolta',
+				titleBgColor: 'bg-gray-800',
+				titleTextColor: 'text-gray-300',
+				audio: 'audio/voices/karanteeni.mp3',
+				text: "<img src='media/karanteeni.png' alt='Karanteeni' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Eristäytyminen on viisas päätös. Vaikka et tiedä tautien syytä, huomaat, että etäisyyden pitäminen auttaa. Selviät rutosta.",
+				points: 3,
+				target: "pelin_loppu"
+				},
+				
+            pakene_maalle: {
+				placeholder: 'Pako maaseudun rauhaan',
+				titleBgColor: 'bg-gray-800',
+				titleTextColor: 'text-green-300',
+				audio: 'audio/voices/pakenemaalle.mp3',
+				text: "<img src='media/pakenemaalle.png' alt='Pakenen maalle' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Pakenet täpötäydestä kaupungista takaisin maaseudun rauhaan. Se on hyvä päätös, sillä harvaan asutuilla alueilla rutto ei leviä yhtä voimakkaasti. Selviät.",
+				points: 2,
+				target: "pelin_loppu"
+				},
+
+            // --- LOPPU ---
+            pelin_loppu: {
+				placeholder: 'Pelin loppu',
+				music: 'audio/music/loppulaulu.mp3', // Lopputeema alkaa tästä
+				titleBgColor: 'bg-sky-800',
+				titleTextColor: 'text-yellow-300',
+				audio: 'audio/voices/pelinloppu.mp3',
+				text: "<img src='media/pelinloppu.png' alt='Pelin loppu' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Olet selvinnyt läpi keskiajan myllerrysten. Olet kokenut sodan, uskon, tieteen ja taudit. Maailma on muuttunut, ja niin olet sinäkin. Onneksi olkoon, Keskiajan Matkaaja!",
+				end: true },
+				
+            gameOver_ristiretki: { gameOver: true,
+				placeholder: 'Ristiretken karu päätös',
+				titleBgColor: 'bg-gray-900',
+				titleTextColor: 'text-red-600',
+				audio: 'audio/voices/gameoverristiretki.mp3',
+				text: "<img src='media/gameoverristiretki.png' alt='Ristiretken karu päätös' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Ristiretki on vaarallisempi kuin kuvittelit. Rynnäkkösi eturintamassa on urhea, mutta joudut saarretuksi ja haavoitut kuolettavasti. Seikkailusi päättyy tähän." },
+				
+            gameOver_vartija: { gameOver: true,
+				placeholder: 'Vartijan karu päätös',
+				titleBgColor: 'bg-gray-900',
+				titleTextColor: 'text-red-600',
+				audio: 'audio/voices/gameovervartija.mp3',
+				text: "<img src='media/gameovervartija.png' alt='Vartijan karu päätös' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Yksin pimeälle kujalle meneminen oli virhe. Joudut väijytykseen, etkä pärjää ylivoimalle. Seikkailusi päättyy tähän." },
+			
+            gameOver_rutto: { gameOver: true,
+				placeholder: 'Ruttoon sairastuminen',
+				titleBgColor: 'bg-gray-900',
+				titleTextColor: 'text-red-600',
+				audio: 'audio/voices/gameoverrutto.mp3',
+				text: "<img src='media/gameoverrutto.png' alt='Ruttoon sairastuminen' class='float-left mr-5 mb-4 w-1/1 sm:w-1/1'/>Autat sairaita parhaasi mukaan, mutta altistut itse rutolle. Valitettavasti varotoimesi eivät riitä, ja sairastut. Parannuskeinoa ei ole. Seikkailusi päättyy tähän." }
+        };
+
+			// Lisää tämä koodilohko storyNodes-objektin jälkeen
+			const titleTiers = [
+				{ name: 'Selviytyjä',       minScore: 0,  imageSrc: 'media/titles/selviytyja.webp' },
+				{ name: 'Matkaaja',         minScore: 9,  imageSrc: 'media/titles/matkaaja.webp' },
+				{ name: 'Tietäjä',          minScore: 15, imageSrc: 'media/titles/tietaja.webp' },
+				{ name: 'Keskiajan Mestari', minScore: 22, imageSrc: 'media/titles/mestari.webp' }
+			];
+
+		const quizzes = {
+			lahteet: {
+				questions: [{
+					question: "Mitä eroa on alkuperäislähteellä ja toisen käden lähteellä?",
+					choices: [{ text: "Alkuperäislähde on vanhempi.", correct: false }, { text: "Alkuperäislähteen kirjoittaja oli itse paikalla.", correct: true }, { text: "Toisen käden lähde on aina luotettavampi.", correct: false }]
+				}],
+				pointsPerCorrect: 2,
+				next: "seuraava_vaihe_2"
+			},
+			kirkon_valta: {
+				questions: [{
+					question: "Kuka oli katolisen kirkon johtaja keskiajalla?",
+					choices: [{ text: "Kuningas", correct: false }, { text: "Keisari", correct: false }, { text: "Paavi", correct: true }]
+				}],
+				pointsPerCorrect: 2,
+				next: "seuraava_vaihe_3"
+			},
+			keksintoja_islam: {
+				questions: [{
+					question: "Minkä tärkeän matemaattisen keksinnön arabialaiset toivat Eurooppaan?",
+					choices: [{ text: "Kreikkalaiset aakkoset", correct: false }, { text: "Arabialaiset numerot (0-9)", correct: true }, { text: "Paperirahan", correct: false }]
+				}],
+				pointsPerCorrect: 2,
+				next: "ristiretki_kutsu"
+			},
+			saadyt: {
+				questions: [
+					{
+					question: " Mihin säätyyn kuuluminen ei perustunut syntyperään, vaan koulutukseen?",
+					choices: [
+							{ text: "Aatelisto", correct: false },
+							{ text: "Papisto", correct: true },
+							{ text: "Kolmas sääty", correct: false }
+						]
+				},
+				{
+						question: "Mikä oli Kaarle Suuren valtakunnassa tärkeä paikka kulttuurin ja oppimisen kannalta?",
+						choices: [
+							{ text: "Hovi", correct: true },
+							{ text: "Linna", correct: false },
+							{ text: "Kylä", correct: false }
+						]
+				},
+				{
+						question: "Mikä oli aateliston pääasiallinen tehtävä yhteiskunnassa?",
+						choices: [
+							{ text: "Rukoilla ja palvella kirkkoa", correct: false },
+							{ text: "Viljellä maata ja maksaa veroja", correct: false },
+							{ text: "Sotia ja kerätä veroja", correct: true }
+						]
+				},
+				{
+						question: "Mitä olivat ritarit?",
+						choices: [
+							{ text: "Talonpoikia, jotka maksoivat veroja kuninkaalle", correct: false },
+							{ text: "Haarniskoihin pukeutuneita ratsusotilaita", correct: true },
+							{ text: "Käsityöläisiä, jotka valmistivat aseita", correct: false }
+						]
+				},
+				{
+						question: "Mikä seuraavista kuului kolmanteen säätyyn?",
+						choices: [
+							{ text: "Piispa", correct: false },
+							{ text: "Ritari", correct: false },
+							{ text: "Kauppias", correct: true }
+						]
+				},
+				],
+				pointsPerCorrect: 1,
+				next: "seuraava_vaihe_5"
+			},
+			// Kappale 2:n kysely
+			kappale2_kysely: {
+				questions: [
+					{
+						question: "Mikä seuraavista EI kuulunut luostarien tehtäviin?",
+						choices: [
+							{ text: "Vanhojen käsikirjoitusten kopioiminen.", correct: false },
+							{ text: "Sairaiden hoitaminen.", correct: false },
+							{ text: "Pysyvän sotajoukon ylläpitäminen.", correct: true }
+						]
+					},
+					{
+						question: "Mikä seuraavista teki Bysantista keskiajan merkittävimmän kauppakaupungin?",
+						choices: [
+							{ text: "Sijainti tärkeiden kauppareittien varrella.", correct: true },
+							{ text: "Ympäröivät maanviljelysalueet.", correct: false },
+							{ text: "Sotilaiden suuri määrä.", correct: false }
+						]
+					},
+					{
+						question: "Kuka oli katolisen kirkon johtaja keskiajalla?",
+						choices: [
+							{ text: "Kuningas", correct: false },
+							{ text: "Paavi", correct: true },
+							{ text: "Keisari", correct: false }
+						]
+					}
+				],
+				pointsPerCorrect: 1, // Pisteet per oikea vastaus
+				next: "seuraava_vaihe_3"
+			}
+		};
+
+        // --- Pelin logiikka ---
+		
+		// --- APUFUNKTIO ÄÄNIEFEKTEILLE ---
+		const sfxPlayer = document.getElementById('sfx-player');
+
+		function playSoundEffect(src) {
+			sfxPlayer.src = src;
+			sfxPlayer.play();
+		}
+		
+		// --- APUFUNKTIO VASTAUSVAIHTOEHTOJEN SEKOITTAMISEEN ---
+		function shuffleArray(array) {
+			for (let i = array.length - 1; i > 0; i--) {
+				const j = Math.floor(Math.random() * (i + 1));
+				[array[i], array[j]] = [array[j], array[i]]; // Vaihdetaan elementtien paikkaa
+			}
+		}
+		
+		// --- UUSI MUSIIKKILOGIIKKA ---
+
+		// Haetaan audio-elementit
+		const musicPlayer1 = document.getElementById('music-player-1');
+		const musicPlayer2 = document.getElementById('music-player-2');
+
+		// Muuttujat musiikin tilan seurantaan
+		let activePlayer = musicPlayer1;
+		let inactivePlayer = musicPlayer2;
+		let currentMusic = null;
+		let fadeInterval = null;
+
+		// Funktio, joka häivyttää äänenvoimakkuutta
+		function fadeAudio(player, targetVolume, duration = 1000) {
+			const startVolume = player.volume;
+			const stepTime = 50; // Päivitysväli millisekunteina
+			const steps = duration / stepTime;
+			const volumeStep = (targetVolume - startVolume) / steps;
+
+			let currentStep = 0;
+
+			// Puhdistetaan vanha intervalli, jos sellainen on käynnissä
+			if (player.fadeInterval) {
+				clearInterval(player.fadeInterval);
+			}
+
+			player.fadeInterval = setInterval(() => {
+				currentStep++;
+				if (currentStep >= steps) {
+					clearInterval(player.fadeInterval);
+					player.volume = targetVolume;
+					if (targetVolume === 0) {
+						player.pause(); // Pysäytetään soitin, kun ääni on vaimennettu
+					}
+				} else {
+					player.volume += volumeStep;
+				}
+			}, stepTime);
+		}
+
+		// Pääfunktio musiikin vaihtamiseen
+		function switchMusicTrack(newTrack) {
+			// Jos uusi kappale on sama kuin nykyinen, ei tehdä mitään
+			if (newTrack === currentMusic) {
+				return;
+			}
+
+			currentMusic = newTrack;
+
+			// Häivytetään aktiivinen soitin pois päältä
+			if (!activePlayer.paused) {
+				fadeAudio(activePlayer, 0);
+			}
+
+			// Jos uusi kappale on null, lopetetaan tähän
+			if (!newTrack) {
+				return;
+			}
+
+			// Vaihdetaan soittimien roolit
+			[activePlayer, inactivePlayer] = [inactivePlayer, activePlayer];
+
+			// Asetetaan uusi kappale ja aloitetaan toisto
+			activePlayer.src = newTrack;
+			activePlayer.volume = 0; // Aloitetaan hiljaisena
+			activePlayer.play().catch(e => console.error("Musiikin toisto estetty:", e));
+
+			// Häivytetään uusi kappale sisään
+			fadeAudio(activePlayer, 0.1); // Oletusäänenvoimakkuus 1.0
+		}
+		
+        let currentPlayer = {};
+        let score = 0;
+		
+		const peliAudio = document.getElementById('peli-audio');
+        const startScreen = document.getElementById('start-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const resultsScreen = document.getElementById('results-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const storyText = document.getElementById('story-text');
+        const choicesContainer = document.getElementById('choices-container');
+        const quizContainer = document.getElementById('quiz-container');
+        const quizQuestion = document.getElementById('quiz-question');
+        const quizChoices = document.getElementById('quiz-choices');
+        const feedbackContainer = document.getElementById('feedback-container');
+        const scoreDisplay = document.getElementById('score');
+        const characterNameDisplay = document.getElementById('character-name');
+        const sceneImage = document.getElementById('scene-image');
+        const gameOverText = document.getElementById('game-over-text');
+
+		let gameInProgress = false;
+
+		function updateInventoryDisplay() {
+			const inventorySlots = document.getElementById('inventory-slots');
+			inventorySlots.innerHTML = ''; // Tyhjennetään vanhat kuvakkeet
+
+			playerInventory.forEach(item => {
+				const iconElement = document.createElement('img');
+				iconElement.src = item.icon;
+				iconElement.title = `${item.name}\n\n${item.description}`; // Tooltip kun hiiren vie päälle
+				iconElement.className = 'h-10 w-10 object-contain transition-transform hover:scale-110';
+				inventorySlots.appendChild(iconElement);
+			});
+		}
+
+		function addItemToInventory(itemId) {
+			// Tarkistetaan, ettei pelaajalla ole jo tätä esinettä/taitoa
+			if (!playerInventory.some(item => item.id === itemId)) {
+				const itemToAdd = allItems[itemId];
+				if (itemToAdd) {
+					// Lisätään uusi esine pelaajan tavaraluetteloon
+					playerInventory.push({ id: itemId, ...itemToAdd });
+					updateInventoryDisplay(); // Päivitetään näkymä
+				}
+			}
+		}
+
+        function startGame(character) {
+		
+			// Tarkistetaan, onko jo peli käynnistä ja varmistetaan uuden pelin aloitus
+			if (gameInProgress && !confirm('Haluatko varmasti aloittaa alusta? Menetät nykyisen edistyksesi.')) {
+				return; // Jos pelaaja painaa "Peruuta", funktion suoritus keskeytetään
+			}
+			fadeAudio(peliAudio, 1, 500);
+            currentPlayer = gameData[character];
+            score = 0;
+			playerInventory = [];
+			updateInventoryDisplay();
+			hasPracticedSwords = false;
+            startScreen.classList.add('hidden');
+            resultsScreen.classList.add('hidden');
+            gameOverScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            characterNameDisplay.textContent = currentPlayer.name;
+            updateScore();
+            showNode(currentPlayer.startNode);
+			gameInProgress = true; // Merkitään peli alkaneeksi
+        }
+
+        function showNode(nodeId) {
+            choicesContainer.innerHTML = '';
+            quizContainer.classList.add('hidden');
+            feedbackContainer.innerHTML = '';
+            storyText.classList.remove('fade-in');
+            void storyText.offsetWidth; 
+            storyText.classList.add('fade-in');
+
+            if (nodeId === 'harjoittele_miekkaa') {
+                hasPracticedSwords = true;
+            }
+
+            if (nodeId === 'restart') {
+				gameInProgress = false;
+                gameScreen.classList.add('hidden');
+                resultsScreen.classList.add('hidden');
+                gameOverScreen.classList.add('hidden');
+                hasPracticedSwords = false;
+                startScreen.classList.remove('hidden');
+                switchMusicTrack(null); // Pysäytä musiikki restartissa
+				// Häivytetään puhe pois 0.5 sekunnissa
+                fadeAudio(peliAudio, 0, 500);
+
+                // Nollataan puheääni pienen viiveen jälkeen, jotta se ehtii häivyttyä
+                setTimeout(() => {
+                    peliAudio.currentTime = 0;
+                }, 500);
+                return;
+            }
+			
+			// Erilliset logiikat eri hahmovaiheille...
+			if (nodeId === 'seuraava_vaihe_3' && currentPlayer.name === 'Aatelinen') {
+				showNode('vaihe_3_aatelinen'); return;
+			}
+			if (nodeId === 'seuraava_vaihe_3' && currentPlayer.name === 'Talonpoika') {
+				showNode('vaihe_3_talonpoika'); return;
+			}
+			if (nodeId === 'seuraava_vaihe_3' && currentPlayer.name === 'Käsityöläinen') {
+				showNode('vaihe_3_käsityöläinen'); return;
+			}
+			if (nodeId === 'seuraava_vaihe_3' && currentPlayer.name === 'Munkkioppilas') {
+				showNode('vaihe_3_munkkioppilas'); return;
+			}
+			if (nodeId === 'ristiretki_kutsu' && currentPlayer.name === 'Munkkioppilas') {
+				showNode('ristiretki_kutsu_munkki'); return;
+			}
+			if (nodeId === 'seuraava_vaihe_5' && currentPlayer.name === 'Aatelinen') {
+				showNode('vaihe_5_aatelinen'); return;
+			}
+			if (nodeId === 'seuraava_vaihe_5' && currentPlayer.name === 'Talonpoika') {
+				showNode('vaihe_5_talonpoika'); return;
+			}
+			if (nodeId === 'seuraava_vaihe_5' && currentPlayer.name === 'Munkkioppilas') {
+				showNode('vaihe_5_munkki'); return;
+			}
+			
+			// Erillinen logiikka ristiretki-taisteluun
+			if (nodeId === 'ristiretki_taistelu') {
+				const node = storyNodes[nodeId];
+				storyText.innerHTML = node.text;
+				choicesContainer.innerHTML = '';
+
+				// Tarkistetaan, onko pelaajalla miekkailutaito
+				const hasSwordSkill = playerInventory.some(item => item.id === 'miekkailu');
+				
+				// Määritellään valinnat sen perusteella
+				const choices = [
+					{ 
+						text: "Hyökkään eturintamassa osoittaakseni urheuteni.", 
+						target: hasSwordSkill ? "selviydy_taistelusta_miekka" : "gameOver_ristiretki" 
+					},
+					{ text: "Pysyn taaempana ja tuen joukkoja jousimiehenä.", target: "selviydy_taistelusta" },
+					{ text: "Autan haavoittuneiden huoltamisessa taistelun aikana.", target: "auta_haavoittuneita" }
+				];
+				
+				choices.forEach(choice => {
+					const button = document.createElement('button');
+					button.textContent = choice.text;
+					button.className = "w-full text-left p-4 bg-stone-800 hover:bg-amber-800/50 border border-stone-700 rounded-lg transition-all duration-300";
+					button.onmouseover = () => playSoundEffect('audio/effects/hover.mp3');
+					button.onclick = () => {
+						playSoundEffect('audio/effects/klikkaus.mp3');
+						showNode(choice.target);
+					};
+					choicesContainer.appendChild(button);
+				});
+				return; // Poistutaan funktiosta, koska valinnat on käsitelty
+			}
+
+            const node = storyNodes[nodeId];
+
+			 if (node && node.grantsItem) {
+				addItemToInventory(node.grantsItem);
+			}
+
+            // Tässä on oikea paikka musiikin vaihtokoodille
+            if (node && typeof node.music !== 'undefined') {
+                switchMusicTrack(node.music);
+            }
+            
+            if (!node) {
+                console.error("Error: storyNode '" + nodeId + "' not found!");
+                storyText.textContent = "Virhe: Tarinan polkua ei löytynyt. Yritä aloittaa peli alusta.";
+                const button = document.createElement('button');
+                button.textContent = "Aloita alusta";
+                button.className = "w-full text-left p-4 bg-red-600 hover:bg-red-700 border border-red-500 rounded-lg transition-all duration-300 text-white font-bold";
+                button.onclick = () => showNode('restart');
+                choicesContainer.appendChild(button);
+                return;
+            }
+
+			if (node.audio) {
+				peliAudio.src = node.audio;
+				peliAudio.play().catch(e => console.log("Toisto estetty selaimen toimesta."));
+			} else {
+				peliAudio.pause();
+				peliAudio.currentTime = 0;
+			}
+
+            if (node.gameOver) {
+                showGameOver(node.text);
+                return;
+            }
+
+            storyText.innerHTML = node.text;
+            
+			const imageContainer = document.getElementById('image-container');
+            imageContainer.innerHTML = ''; 
+            imageContainer.classList.remove('hidden');
+
+            if (node.image) {
+                const sceneImage = document.createElement('img');
+                sceneImage.src = node.image;
+                sceneImage.alt = nodeId;
+                sceneImage.className = 'w-full h-full object-cover';
+                imageContainer.appendChild(sceneImage);
+
+			} else if (node.placeholder) {
+				let bgColorClass = 'bg-stone-800';
+				let textColorClass = 'text-amber-400';
+
+				if (node.titleBgColor) {
+					bgColorClass = node.titleBgColor;
+				}
+				if (node.titleTextColor) {
+					textColorClass = node.titleTextColor;
+				}
+				
+				imageContainer.innerHTML = `
+					<div class="image-placeholder ${bgColorClass} transition-colors duration-500">
+						<span class="image-placeholder-text ${textColorClass} transition-colors duration-500">${node.placeholder}</span>
+					</div>
+				`;
+			} else {
+                imageContainer.classList.add('hidden');
+            }
+
+            if (node.points) {
+                score += node.points;
+                updateScore();
+                showFeedback(`Sait ${node.points} tietopistettä!`, 'text-green-400');
+            }
+
+            if (node.end) {
+                const button = document.createElement('button');
+                button.textContent = "Katso tulokset";
+                button.className = "w-full text-left p-4 bg-amber-600 hover:bg-amber-700 border border-amber-500 rounded-lg transition-all duration-300 text-white font-bold";
+                button.onclick = () => showResults();
+                choicesContainer.appendChild(button);
+            } else if (node.quiz) {
+                startQuiz(node.quiz);
+            } else if (node.choices) {
+                choicesContainer.classList.remove('md:grid-cols-2');
+                if (node.choices.length > 2) {
+                     choicesContainer.classList.add('md:grid-cols-1');
+                } else {
+                     choicesContainer.classList.add('md:grid-cols-2');
+                }
+                node.choices.forEach(choice => {
+                    const button = document.createElement('button');
+                    button.textContent = choice.text;
+                    button.className = "w-full text-left p-4 bg-stone-800 hover:bg-amber-800/50 border border-stone-700 rounded-lg transition-all duration-300";
+                    button.onmouseover = () => playSoundEffect('audio/effects/hover.mp3');
+					button.onclick = () => showNode(choice.target);
+                    choicesContainer.appendChild(button);
+                });
+            } else if (node.target) {
+                const button = document.createElement('button');
+                button.textContent = "Jatka";
+                button.className = "w-full text-left p-4 bg-amber-600 hover:bg-amber-700 border border-amber-500 rounded-lg transition-all duration-300 text-white font-bold";
+				button.onmouseover = () => playSoundEffect('audio/effects/hover.mp3');
+                button.onclick = () => {
+                    playSoundEffect('audio/effects/klikkaus.mp3'); // <-- LISÄTTY ÄÄNI
+                    showNode(node.target);
+                };
+                choicesContainer.appendChild(button);
+            }
+        }
+
+			let currentQuiz = null;
+			let currentQuestionIndex = 0;
+
+			function startQuiz(quizId) {
+				currentQuiz = quizzes[quizId];
+				currentQuestionIndex = 0;
+				quizContainer.classList.remove('hidden');
+				choicesContainer.innerHTML = ''; // Tyhjennetään vanhat valinnat
+				showQuizQuestion();
+			}
+
+			function showQuizQuestion() {
+				if (currentQuestionIndex < currentQuiz.questions.length) {
+					const questionData = currentQuiz.questions[currentQuestionIndex];
+					quizQuestion.textContent = questionData.question;
+					quizChoices.innerHTML = '';
+
+					// --- LISÄTTY KOODI ALKAA ---
+					// Kopioidaan ja sekoitetaan vastausvaihtoehdot
+					const shuffledChoices = [...questionData.choices]; // Luodaan kopio alkuperäisestä
+					shuffleArray(shuffledChoices); // Sekoitetaan kopio
+					// --- LISÄTTY KOODI PÄÄTTYY ---
+
+					// Käytetään nyt sekoitettua listaa nappien luomiseen
+					shuffledChoices.forEach(choice => {
+						const button = document.createElement('button');
+						button.textContent = choice.text;
+						button.className = "w-full text-left p-4 bg-stone-800 hover:bg-amber-800/50 border border-stone-700 rounded-lg transition-all duration-300";
+						button.onmouseover = () => playSoundEffect('audio/effects/hover.mp3');
+						button.onclick = () => handleQuizAnswer(choice.correct);
+						quizChoices.appendChild(button);
+					});
+				} else {
+					// Kaikki kysymykset vastattu, siirry eteenpäin
+					quizContainer.classList.add('hidden');
+					showNode(currentQuiz.next);
+				}
+			}
+
+			function handleQuizAnswer(isCorrect) {
+				if (isCorrect) {
+					playSoundEffect('audio/effects/oikein.mp3');
+					score += currentQuiz.pointsPerCorrect;
+					updateScore();
+                    // MUUTOS 3: Kutsutaan päivitettyä feedback-funktiota pisteillä
+					showFeedback(`Oikein! Sait ${currentQuiz.pointsPerCorrect} tietopistettä.`, 'text-green-400', currentQuiz.pointsPerCorrect);
+				} else {
+					playSoundEffect('audio/effects/vaarin.mp3');
+					showFeedback("Väärin. Matka jatkuu, mutta opit virheistäsi.", 'text-red-400');
+				}
+
+				currentQuestionIndex++;
+				
+				quizChoices.querySelectorAll('button').forEach(b => b.disabled = true);
+				setTimeout(() => {
+					feedbackContainer.innerHTML = ''; 
+					showQuizQuestion();
+				}, 2000); 
+        }
+
+			function showResults() {
+			
+				gameInProgress = false;
+	            gameScreen.classList.add('hidden');
+	            resultsScreen.classList.remove('hidden');
+	            resultsScreen.classList.add('fade-in');
+
+	            document.getElementById('final-score').textContent = score;
+				const ladderContainer = document.getElementById('title-ladder-container');
+				ladderContainer.innerHTML = ''; // Tyhjennetään vanha sisältö
+
+				// Etsitään pelaajan saavuttama korkein arvonimi
+				let achievedTitle = null;
+				for (let i = titleTiers.length - 1; i >= 0; i--) {
+					if (score >= titleTiers[i].minScore) {
+						achievedTitle = titleTiers[i];
+						break;
+					}
+				}
+
+				// Rakennetaan visuaalinen arvoasteikko
+				titleTiers.slice().reverse().forEach(tier => {
+					const hasAchieved = score >= tier.minScore;
+					const isCurrentRank = achievedTitle && achievedTitle.name === tier.name;
+
+					const itemContainer = document.createElement('div');
+					itemContainer.className = 'ladder-item text-center transition-all duration-500';
+
+					const imageElement = document.createElement('img');
+					imageElement.src = tier.imageSrc;
+					imageElement.alt = tier.name;
+					imageElement.className = 'w-32 h-auto mx-auto transition-all duration-500';
+					
+					// Asetetaan tyylit sen mukaan, onko titteli saavutettu
+					if (hasAchieved) {
+						itemContainer.classList.add('opacity-100');
+					} else {
+						itemContainer.classList.add('opacity-30', 'grayscale');
+					}
+
+					// Lisätään korostus pelaajan omalle, korkeimmalle saavutetulle tasolle
+					if (isCurrentRank) {
+						imageElement.classList.add('scale-140');
+						itemContainer.classList.add('drop-shadow-[0_0_15px_rgba(252,211,77,0.4)]'); // Vastaa shadow-amber-300
+					}
+
+					itemContainer.appendChild(imageElement);
+					ladderContainer.appendChild(itemContainer);
+				});
+	        }
+
+        function showGameOver(message) {
+			gameInProgress = false;
+            gameScreen.classList.add('hidden');
+            gameOverScreen.classList.remove('hidden');
+            gameOverScreen.classList.add('fade-in');
+            gameOverText.innerHTML = message;
+        }
+
+        function updateScore() {
+            scoreDisplay.textContent = score;
+        }
+
+        function showFeedback(message, colorClass, points = 0) {
+			// Vanha tekstipalaute säilyy ennallaan
+			feedbackContainer.textContent = message;
+			feedbackContainer.className = `mt-4 text-center text-lg medieval-font ${colorClass}`;
+
+			// UUSI ANIMAATIO-OSA
+			if (points > 0) {
+				// MUUTOS: Asetetaan oletuskohteeksi choicesContainer, jos quiz on piilossa
+				const targetContainer = quizContainer.classList.contains('hidden') 
+					? choicesContainer 
+					: quizChoices;
+
+				const popup = document.createElement('div');
+				popup.textContent = `+${points}`;
+				popup.className = `score-popup ${colorClass}`;
+				
+				// Varmistetaan, että kohde-elementti voi sisältää absoluuttisesti asemoidun lapsen
+				targetContainer.style.position = 'relative';
+				targetContainer.appendChild(popup);
+
+				// Poistetaan elementti animaation jälkeen
+				setTimeout(() => {
+					popup.remove();
+				}, 1500);
+			}
+		}
+		
+		function handleBeforeUnload(e) {
+			// Jos peli on käynnissä, näytä selaimen oma varoitusikkuna.
+			if (gameInProgress) {
+				// Estää oletustoiminnon (sivun välitön lataus/sulkeminen).
+				e.preventDefault();
+				// Nykyaikaiset selaimet vaativat, että returnValue asetetaan,
+				// vaikka sen arvoa ei näytetäkään käyttäjälle.
+				e.returnValue = '';
+			}
+		}
+
+		window.addEventListener('beforeunload', handleBeforeUnload);
+
+    </script>
+</body>
+</html>
